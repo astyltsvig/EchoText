@@ -4,6 +4,38 @@ Live transskription af telefonopkald for døve med mulighed for at svare via tek
 
 **Dansk alternativ til [Nagish](https://www.nagish.com)** - fordi Nagish ikke understøtter danske telefonnumre.
 
+## Use Cases
+
+### Jobsamtaler
+Du søger job og venter på svar. Rekruttereren ringer fra et ukendt nummer. Med EchoText kan du:
+- Se hvem der ringer og hvad de siger
+- Svare professionelt via tekst-til-tale
+- Aldrig misse en vigtig jobmulighed igen
+
+### Læge og sundhed
+Hospitalet ringer med prøvesvar eller aftaler. I stedet for at bede om SMS:
+- Modtag opkaldet direkte
+- Læs beskeden i realtid
+- Still opfølgende spørgsmål via tekst
+
+### Bank og myndigheder
+Banken ringer om dit lån. SKAT har spørgsmål. Mange institutioner kræver telefonverifikation:
+- Håndter officielle opkald selvstændigt
+- Ingen behov for tolk eller hjælper
+- Bevar privatliv i følsomme samtaler
+
+### Håndværkere og service
+Elektrikeren ringer for at aftale tid. Pakkebuddet kan ikke finde adressen:
+- Koordiner praktiske ting direkte
+- Hurtige svar uden forsinkelse
+- Undgå misforståelser via SMS-ping-pong
+
+### Familie og venner
+Ikke alle er gode til at skrive beskeder. Bedsteforældre foretrækker måske at ringe:
+- Hold kontakten med dem der ringer
+- Mere naturlig samtaleflow end SMS
+- De behøver ikke ændre vaner
+
 ## Koncept
 
 ```
@@ -175,14 +207,88 @@ Baseret på ~10 opkald á 5 minutter per måned:
 2. **TTS:** Kan opkalder forstå dine svar?
 3. **Latency:** Er forsinkelsen acceptabel for samtale?
 
-## Næste skridt (v2)
+## Roadmap
 
-- [ ] Push notifikationer ved indgående opkald
-- [ ] Udgående opkald
-- [ ] PWA med offline support
-- [ ] Samtalehistorik
-- [ ] Multi-user support
-- [ ] Viderestilling fra eget nummer
+### v1.0 - PoC (nuværende)
+**Mål:** Validere at teknologien virker til danske telefonopkald.
+
+- [x] Deepgram dansk transskription test
+- [ ] Cloudflare Worker med Durable Object
+- [ ] Twilio Media Streams integration
+- [ ] Google TTS integration
+- [ ] Simpel webside til transskription
+
+**Succeskriterium:** Gennemfør én samtale hvor begge parter forstår hinanden.
+
+---
+
+### v1.1 - Notifikationer
+**Mål:** Vide når nogen ringer, selvom telefonen er i lommen.
+
+- [ ] PWA med Service Worker
+- [ ] Web Push notifikationer (VAPID)
+- [ ] Vibration ved indgående opkald
+- [ ] "Ring til mig" SMS når opkald starter
+
+**Succeskriterium:** Aldrig misse et opkald fordi du ikke så browseren.
+
+---
+
+### v1.2 - Udgående opkald
+**Mål:** Kunne ringe til andre, ikke kun modtage.
+
+- [ ] UI til at indtaste telefonnummer
+- [ ] Twilio outbound call API
+- [ ] Samme transskription/TTS flow
+- [ ] Opkaldshistorik
+
+**Succeskriterium:** Ring til en ven og hav en samtale.
+
+---
+
+### v2.0 - Brug dit eget nummer
+**Mål:** Folk ringer til dit rigtige nummer, ikke et Twilio-nummer.
+
+- [ ] Viderestilling fra dit nummer til Twilio
+- [ ] Caller ID preservation
+- [ ] Fallback hvis EchoText er offline
+- [ ] Eventuelt nummer-portering til Telnyx (billigere)
+
+**Succeskriterium:** Rekrutterer ringer dit CV-nummer og du modtager via EchoText.
+
+---
+
+### v2.1 - Samtalehistorik
+**Mål:** Gennemlæs tidligere samtaler.
+
+- [ ] Database (Cloudflare D1 eller KV)
+- [ ] Gem transskription + dine svar
+- [ ] Søgefunktion
+- [ ] Eksport til tekst/PDF
+
+**Succeskriterium:** Find hvad lægen sagde for 2 uger siden.
+
+---
+
+### v3.0 - Multi-user
+**Mål:** Andre døve kan bruge EchoText.
+
+- [ ] Brugeroprettelse og login
+- [ ] Hvert bruger får eget Twilio-nummer (eller medbring eget)
+- [ ] Subscription/betaling
+- [ ] Admin dashboard
+
+**Succeskriterium:** 10 brugere der aktivt bruger systemet.
+
+---
+
+### Fremtidige idéer
+- **Hurtigsvar:** Foruddefinerede svar ("Jeg ringer tilbage", "Send SMS i stedet")
+- **AI-assistent:** Automatisk svar på simple spørgsmål
+- **Flere sprog:** Engelsk, svensk, norsk
+- **Dialekter:** Jysk, sønderjysk, københavnsk
+- **Videoopkald:** Integration med FaceTime/WhatsApp transskription
+- **Telefonsvarer:** Transskriberet voicemail
 
 ## Licens
 
