@@ -1,0 +1,1495 @@
+---
+const title = "EchoText - Telefonopkald for døve";
+const description = "Live transskription af telefonopkald med mulighed for at svare via tekst-til-tale. Dit danske alternativ til Nagish.";
+---
+
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title}</title>
+    <meta name="description" content={description}>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero">
+        <nav class="nav">
+            <div class="nav-content">
+                <div class="logo">EchoText</div>
+                <div class="nav-links">
+                    <a href="#baggrund">Baggrund</a>
+                    <a href="#hvordan">Hvordan</a>
+                    <a href="#roadmap">Roadmap</a>
+                    <a href="https://github.com/dit-brugernavn/echotext" class="btn-secondary">GitHub</a>
+                </div>
+            </div>
+        </nav>
+
+        <div class="hero-content">
+            <div class="hero-text">
+                <div class="badge">📞 Dansk alternativ til Nagish</div>
+                <h1>Tag telefonen.<br/>Uden at høre.</h1>
+                <p class="hero-subtitle">
+                    Live transskription af telefonopkald med mulighed for at svare via tekst-til-tale.
+                    Fordi vigtige opkald fra rekrutterere, læger og banker ikke skal gå tabt.
+                </p>
+                <div class="hero-cta">
+                    <a href="https://echotext.astyltsvig.workers.dev" class="btn-primary">Prøv demo</a>
+                    <a href="#hvordan" class="btn-outline">Hvordan virker det?</a>
+                </div>
+            </div>
+
+            <div class="hero-demo">
+                <div class="phone-mockup">
+                    <div class="phone-header">
+                        <div class="phone-time">14:23</div>
+                        <div class="phone-status">📶 🔋</div>
+                    </div>
+                    <div class="phone-content">
+                        <div class="call-info">
+                            <div class="caller-name">+45 XX XX XX XX</div>
+                            <div class="call-status">🔴 Live opkald</div>
+                        </div>
+
+                        <div class="transcript-area">
+                            <div class="transcript-message">
+                                <div class="transcript-time">14:23:12</div>
+                                <p>Hej, det er Charlotte fra Novo Nordisk. Vi vil gerne invitere dig til en jobsamtale på mandag kl. 10. Passer det dig?</p>
+                            </div>
+                        </div>
+
+                        <div class="reply-area">
+                            <input type="text" placeholder="Svar kommer snart..." disabled />
+                            <button class="send-btn" disabled>Send →</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Background Section -->
+    <section id="baggrund" class="section">
+        <div class="container">
+            <div class="section-header">
+                <span class="eyebrow">Baggrund</span>
+                <h2>Hvorfor EchoText?</h2>
+            </div>
+
+            <div class="background-content">
+                <div class="background-text">
+                    <h3>Problemet</h3>
+                    <p>
+                        <strong><a href="https://www.nagish.com/" target="_blank" rel="noopener">Nagish</a></strong> er en amerikansk service og brilliant app der gør telefonopkald tilgængelige for døve gennem live transskription og tekst-til-tale.
+                        Men den understøtter kun amerikanske og israelske telefonnumre - ikke danske.
+                    </p>
+                    <p>
+                        Det betyder at døve i Danmark stadig misser vigtige opkald fra rekrutterere, læger, banker og håndværkere.
+                        Eller er afhængige af SMS, hjælp fra andre, eller langsom ping-pong kommunikation.
+                    </p>
+
+                    <h3>Løsningen</h3>
+                    <p>
+                        EchoText gør det samme som Nagish - men for danske telefonnumre. Med moderne AI-teknologi:
+                    </p>
+                    <ul>
+                        <li><strong>Deepgram Nova-2</strong> - dansk speech-to-text i realtid</li>
+                        <li><strong>Google Cloud TTS</strong> - naturlig dansk text-to-speech</li>
+                        <li><strong>Twilio</strong> - pålidelig telefoni-infrastruktur</li>
+                        <li><strong>Cloudflare Workers</strong> - hurtig, global hosting</li>
+                    </ul>
+
+                    <h3>Hvordan det fungerer</h3>
+                    <p>Når nogen ringer til dit EchoText nummer:</p>
+                    <ol>
+                        <li>Du ser live transskription af hvad de siger på din telefon</li>
+                        <li>Du skriver dit svar som tekst</li>
+                        <li>De hører dit svar oplæst med naturlig dansk stemme</li>
+                    </ol>
+                    <p>Alt sammen med under 2 sekunders forsinkelse.</p>
+                </div>
+
+                <div class="status-box">
+                    <h4>📊 Projekt Status</h4>
+                    <div class="status-item">
+                        <span class="status-label">Version</span>
+                        <span class="status-value">v1.0 - Early Access</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Live Transskription</span>
+                        <span class="status-value">✅ Virker</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Text-to-Speech</span>
+                        <span class="status-value">🔄 Under udvikling</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Open Source</span>
+                        <span class="status-value">✅ MIT License</span>
+                    </div>
+
+                    <div class="warning-box">
+                        <strong>🚧 Under aktiv udvikling</strong>
+                        <p>Projektet er tidligt i udviklingen. Selvhost din egen instans.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem Section -->
+    <section class="section section-gray">
+        <div class="container">
+            <div class="section-header">
+                <span class="eyebrow">Motivationen</span>
+                <h2>Hvem har brug for dette?</h2>
+            </div>
+
+            <div class="problem-grid">
+                <div class="problem-card">
+                    <div class="problem-icon">💼</div>
+                    <h3>Jobsamtaler</h3>
+                    <p>Rekruttereren ringer fra et ukendt nummer. Du ser det for sent. Chancen er tabt.</p>
+                </div>
+
+                <div class="problem-card">
+                    <div class="problem-icon">🏥</div>
+                    <h3>Læge & Sundhed</h3>
+                    <p>Hospitalet ringer med prøvesvar. Du skal vente dage på at få besked via SMS.</p>
+                </div>
+
+                <div class="problem-card">
+                    <div class="problem-icon">🏦</div>
+                    <h3>Bank & Myndigheder</h3>
+                    <p>Mange institutioner kræver telefonverifikation. Du er afhængig af hjælp.</p>
+                </div>
+
+                <div class="problem-card">
+                    <div class="problem-icon">👷</div>
+                    <h3>Håndværkere</h3>
+                    <p>Elektrikeren ringer for at aftale tid. SMS ping-pong tager dage.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How it works -->
+    <section id="hvordan" class="section">
+        <div class="container">
+            <div class="section-header">
+                <span class="eyebrow">Sådan virker det</span>
+                <h2>Prøv det selv - Ring nu!</h2>
+            </div>
+
+            <div class="demo-instructions">
+                <div class="demo-card">
+                    <div class="demo-icon">📞</div>
+                    <h3>Prøv live demo</h3>
+                    <p class="demo-number">Ring til: <strong>+45 52 51 36 34</strong></p>
+                    <ol class="demo-steps">
+                        <li>Åbn <a href="https://echotext.astyltsvig.workers.dev" target="_blank">echotext.astyltsvig.workers.dev</a> i din browser</li>
+                        <li>Ring til <strong>+45 52 51 36 34</strong> fra din telefon</li>
+                        <li>Begynd at snakke - se live transskription i browseren!</li>
+                    </ol>
+                    <p class="demo-note">💡 Hold begge vinduer åbne samtidig for at se transskriptionen i realtid</p>
+                </div>
+            </div>
+
+            <div class="how-it-works">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>Nogen ringer</h3>
+                        <p>Opkaldet går til dit EchoText nummer og streames til vores server</p>
+                    </div>
+                </div>
+
+                <div class="step-arrow">→</div>
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>Live transskription</h3>
+                        <p>AI transkriberer talen i realtid på dansk med Deepgram Nova-2</p>
+                    </div>
+                </div>
+
+                <div class="step-arrow">→</div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>Du læser og svarer</h3>
+                        <p>Se teksten på din telefon og svar ved at skrive - Google TTS læser op</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tech-stack">
+                <div class="tech-item">
+                    <strong>Twilio</strong>
+                    <span>Telefoni</span>
+                </div>
+                <div class="tech-item">
+                    <strong>Deepgram</strong>
+                    <span>Speech-to-Text</span>
+                </div>
+                <div class="tech-item">
+                    <strong>Google TTS</strong>
+                    <span>Text-to-Speech</span>
+                </div>
+                <div class="tech-item">
+                    <strong>Cloudflare</strong>
+                    <span>Infrastruktur</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Use Cases -->
+    <section id="brug" class="section section-gray">
+        <div class="container">
+            <div class="section-header">
+                <span class="eyebrow">Use Cases</span>
+                <h2>Designet til din hverdag</h2>
+            </div>
+
+            <div class="use-case-grid">
+                <div class="use-case">
+                    <div class="use-case-image">📱</div>
+                    <h3>Professionelt</h3>
+                    <ul>
+                        <li>Jobsamtaler og networking</li>
+                        <li>Møder og aftaler</li>
+                        <li>Kundeservice</li>
+                    </ul>
+                </div>
+
+                <div class="use-case">
+                    <div class="use-case-image">🏥</div>
+                    <h3>Sundhed</h3>
+                    <ul>
+                        <li>Læge og hospital</li>
+                        <li>Prøvesvar</li>
+                        <li>Medicin og recept</li>
+                    </ul>
+                </div>
+
+                <div class="use-case">
+                    <div class="use-case-image">🏠</div>
+                    <h3>Hverdagen</h3>
+                    <ul>
+                        <li>Pakker og levering</li>
+                        <li>Håndværkere</li>
+                        <li>Familie og venner</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- Roadmap Section -->
+    <section id="roadmap" class="section section-gray">
+        <div class="container">
+            <div class="section-header">
+                <span class="eyebrow">Roadmap</span>
+                <h2>Hvad kommer der?</h2>
+            </div>
+
+            <div class="roadmap">
+                <div class="roadmap-phase">
+                    <div class="phase-header current">
+                        <span class="phase-badge">Nuværende</span>
+                        <h3>v1.0 - Grundfunktionalitet</h3>
+                    </div>
+                    <p class="phase-goal"><strong>Mål:</strong> Modtage og føre samtaler via telefon</p>
+                    <ul class="phase-tasks">
+                        <li>✅ Live dansk transskription (Deepgram Nova-2)</li>
+                        <li>✅ Cloudflare Worker backend</li>
+                        <li>✅ Twilio telefoni-integration</li>
+                        <li>✅ Indgående opkald virker</li>
+                        <li>🔄 Text-to-speech svar (Google TTS)</li>
+                        <li>🔄 Web interface forbedringer</li>
+                    </ul>
+                    <p class="phase-success"><strong>Status:</strong> Live transskription fungerer rigtig godt!</p>
+                </div>
+
+                <div class="roadmap-phase">
+                    <div class="phase-header">
+                        <span class="phase-badge">Næste</span>
+                        <h3>v1.1 - Notifikationer</h3>
+                    </div>
+                    <p class="phase-goal"><strong>Mål:</strong> Vide når nogen ringer</p>
+                    <ul class="phase-tasks">
+                        <li>PWA med Service Worker</li>
+                        <li>Web Push notifikationer</li>
+                        <li>Vibration ved indgående opkald</li>
+                    </ul>
+                </div>
+
+                <div class="roadmap-phase">
+                    <div class="phase-header">
+                        <h3>v1.2 - Udgående opkald</h3>
+                    </div>
+                    <p class="phase-goal"><strong>Mål:</strong> Kunne ringe til andre</p>
+                    <ul class="phase-tasks">
+                        <li>UI til at indtaste telefonnummer</li>
+                        <li>Twilio outbound call API</li>
+                        <li>Opkaldshistorik</li>
+                    </ul>
+                </div>
+
+                <div class="roadmap-phase">
+                    <div class="phase-header">
+                        <h3>v2.0 - Brug dit eget nummer</h3>
+                    </div>
+                    <p class="phase-goal"><strong>Mål:</strong> Folk ringer dit rigtige nummer</p>
+                    <ul class="phase-tasks">
+                        <li>Viderestilling fra dit nummer</li>
+                        <li>Caller ID preservation</li>
+                        <li>Fallback hvis offline</li>
+                    </ul>
+                </div>
+
+                <div class="roadmap-phase">
+                    <div class="phase-header">
+                        <h3>v2.1 - Samtalehistorik</h3>
+                    </div>
+                    <p class="phase-goal"><strong>Mål:</strong> Gennemlæs tidligere samtaler</p>
+                    <ul class="phase-tasks">
+                        <li>Database (Cloudflare D1)</li>
+                        <li>Søgefunktion</li>
+                        <li>Eksport til PDF</li>
+                    </ul>
+                </div>
+
+                <div class="roadmap-phase">
+                    <div class="phase-header">
+                        <h3>v3.0 - Multi-user Platform</h3>
+                    </div>
+                    <p class="phase-goal"><strong>Mål:</strong> Andre døve kan bruge EchoText</p>
+                    <ul class="phase-tasks">
+                        <li>Brugeroprettelse og login</li>
+                        <li>Eget nummer per bruger</li>
+                        <li>Subscription/betaling</li>
+                        <li>Admin dashboard</li>
+                    </ul>
+                    <p class="phase-success"><strong>Success:</strong> 10 aktive brugere</p>
+                </div>
+            </div>
+
+            <div class="future-ideas">
+                <h3>🔮 Fremtidige idéer</h3>
+                <div class="ideas-grid">
+                    <div class="idea">Hurtigsvar templates</div>
+                    <div class="idea">AI-assistent til simple spørgsmål</div>
+                    <div class="idea">Flere sprog (EN, SE, NO)</div>
+                    <div class="idea">Dialekthåndtering (jysk, sønderjysk)</div>
+                    <div class="idea">Videoopkald transskription</div>
+                    <div class="idea">Transskriberet voicemail</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section id="kom-i-gang" class="section section-dark">
+        <div class="container">
+            <div class="cta-content">
+                <h2>Prøv det selv</h2>
+                <p>Live demo. Open source. Gratis at selvhoste.</p>
+                <div class="cta-buttons">
+                    <a href="https://echotext.astyltsvig.workers.dev" class="btn-primary btn-large">Prøv demo</a>
+                    <a href="https://github.com/dit-brugernavn/echotext/blob/main/SETUP.md" class="btn-outline-light">Opsætningsguide</a>
+                </div>
+                <p class="cta-note">💡 Ring til +45 52 51 36 34 og se live transskription!</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <div class="logo">EchoText</div>
+                    <p>Dansk alternativ til Nagish</p>
+                </div>
+                <div class="footer-links">
+                    <div class="footer-column">
+                        <h4>Produkt</h4>
+                        <a href="#hvordan">Hvordan virker det</a>
+                        <a href="#brug">Use Cases</a>
+                        <a href="#roadmap">Roadmap</a>
+                    </div>
+                    <div class="footer-column">
+                        <h4>Resources</h4>
+                        <a href="https://github.com/dit-brugernavn/echotext">GitHub</a>
+                        <a href="https://github.com/dit-brugernavn/echotext/blob/main/README.md">Dokumentation</a>
+                        <a href="https://github.com/dit-brugernavn/echotext/blob/main/SETUP.md">Setup Guide</a>
+                    </div>
+                    <div class="footer-column">
+                        <h4>Legal</h4>
+                        <a href="#">Privatlivspolitik</a>
+                        <a href="#">Vilkår</a>
+                        <a href="https://github.com/dit-brugernavn/echotext/blob/main/LICENSE">MIT Licens</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 EchoText. Open source under MIT License.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
+
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    :root {
+        --primary: #2563eb;
+        --primary-dark: #1e40af;
+        --secondary: #8b5cf6;
+        --gray-50: #f9fafb;
+        --gray-100: #f3f4f6;
+        --gray-200: #e5e7eb;
+        --gray-300: #d1d5db;
+        --gray-700: #374151;
+        --gray-800: #1f2937;
+        --gray-900: #111827;
+    }
+
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        color: var(--gray-900);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    /* Navigation */
+    .nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--gray-200);
+    }
+
+    .nav-content {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 1rem 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .logo {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--primary);
+    }
+
+    .nav-links {
+        display: flex;
+        gap: 2rem;
+        align-items: center;
+    }
+
+    .nav-links a {
+        color: var(--gray-700);
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+        color: var(--primary);
+    }
+
+    /* Hero */
+    .hero {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        flex-direction: column;
+        padding-top: 80px;
+    }
+
+    .hero-content {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 4rem 2rem;
+        flex: 1;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4rem;
+        align-items: center;
+    }
+
+    .hero-text {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .badge {
+        display: inline-block;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 0.5rem 1rem;
+        border-radius: 2rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        margin-bottom: 2rem;
+        width: fit-content;
+    }
+
+    .hero h1 {
+        font-size: 4rem;
+        font-weight: 800;
+        line-height: 1.1;
+        margin-bottom: 1.5rem;
+    }
+
+    .hero-subtitle {
+        font-size: 1.5rem;
+        opacity: 0.9;
+        margin-bottom: 3rem;
+        max-width: 600px;
+    }
+
+    .hero-cta {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 4rem;
+    }
+
+    .btn-primary {
+        background: white;
+        color: var(--primary);
+        padding: 1rem 2rem;
+        border-radius: 0.5rem;
+        text-decoration: none;
+        font-weight: 600;
+        transition: transform 0.2s, box-shadow 0.2s;
+        display: inline-block;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-outline {
+        background: transparent;
+        color: white;
+        padding: 1rem 2rem;
+        border: 2px solid white;
+        border-radius: 0.5rem;
+        text-decoration: none;
+        font-weight: 600;
+        transition: background 0.2s;
+        display: inline-block;
+    }
+
+    .btn-outline:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-secondary {
+        background: var(--gray-100);
+        color: var(--gray-900);
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        text-decoration: none;
+        font-weight: 600;
+        transition: background 0.2s;
+    }
+
+    .btn-secondary:hover {
+        background: var(--gray-200);
+    }
+
+    .hero-stats {
+        display: flex;
+        gap: 4rem;
+    }
+
+    .stat {
+        text-align: center;
+    }
+
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        font-size: 1rem;
+        opacity: 0.9;
+    }
+
+    /* Phone Mockup */
+    .hero-demo {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .phone-mockup {
+        width: 100%;
+        max-width: 380px;
+        background: white;
+        border-radius: 2rem;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+        color: var(--gray-900);
+    }
+
+    .phone-header {
+        background: #000;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.875rem;
+    }
+
+    .phone-content {
+        padding: 1.5rem;
+        background: var(--gray-50);
+        min-height: 500px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .call-info {
+        background: white;
+        padding: 1rem;
+        border-radius: 0.75rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .caller-name {
+        font-weight: 600;
+        font-size: 1.125rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .call-status {
+        color: #dc2626;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .transcript-area {
+        flex: 1;
+        margin-bottom: 1.5rem;
+        overflow-y: auto;
+    }
+
+    .transcript-message {
+        background: white;
+        padding: 1rem;
+        border-radius: 0.75rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        margin-bottom: 1rem;
+    }
+
+    .transcript-time {
+        font-size: 0.75rem;
+        color: var(--gray-700);
+        margin-bottom: 0.5rem;
+    }
+
+    .transcript-message p {
+        margin: 0;
+        line-height: 1.5;
+        color: var(--gray-900);
+    }
+
+    .reply-area {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .reply-area input {
+        flex: 1;
+        padding: 0.875rem;
+        border: 2px solid var(--gray-300);
+        border-radius: 0.75rem;
+        font-size: 0.875rem;
+        font-family: inherit;
+        background: white;
+    }
+
+    .reply-area input:focus {
+        outline: none;
+        border-color: var(--primary);
+    }
+
+    .reply-area input:disabled {
+        background: var(--gray-100);
+        color: var(--gray-700);
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+
+    .send-btn {
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 0.875rem 1.5rem;
+        border-radius: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+        transition: background 0.2s;
+    }
+
+    .send-btn:hover {
+        background: var(--primary-dark);
+    }
+
+    .send-btn:disabled {
+        background: var(--gray-300);
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .send-btn:disabled:hover {
+        background: var(--gray-300);
+    }
+
+    /* Sections */
+    .section {
+        padding: 6rem 2rem;
+    }
+
+    .section-gray {
+        background: var(--gray-50);
+    }
+
+    .section-dark {
+        background: var(--gray-900);
+        color: white;
+    }
+
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .section-header {
+        text-align: center;
+        margin-bottom: 4rem;
+    }
+
+    .eyebrow {
+        display: inline-block;
+        color: var(--primary);
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.875rem;
+        letter-spacing: 0.05em;
+        margin-bottom: 1rem;
+    }
+
+    .section-header h2 {
+        font-size: 3rem;
+        font-weight: 800;
+        margin-bottom: 1rem;
+    }
+
+    /* Problem Grid */
+    .problem-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 2rem;
+    }
+
+    .problem-card {
+        background: white;
+        padding: 2rem;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .problem-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+
+    .problem-card h3 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+    }
+
+    .problem-card p {
+        color: var(--gray-700);
+    }
+
+    /* Demo Instructions */
+    .demo-instructions {
+        margin-bottom: 4rem;
+    }
+
+    .demo-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 3rem;
+        border-radius: 1rem;
+        text-align: center;
+        max-width: 700px;
+        margin: 0 auto;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    }
+
+    .demo-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+
+    .demo-card h3 {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+    }
+
+    .demo-number {
+        font-size: 1.5rem;
+        margin-bottom: 2rem;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 1rem;
+        border-radius: 0.5rem;
+    }
+
+    .demo-number strong {
+        font-size: 2rem;
+        display: block;
+        margin-top: 0.5rem;
+        letter-spacing: 0.05em;
+    }
+
+    .demo-steps {
+        text-align: left;
+        margin: 2rem auto;
+        max-width: 500px;
+        font-size: 1.125rem;
+        line-height: 1.8;
+    }
+
+    .demo-steps li {
+        margin-bottom: 1rem;
+        padding-left: 0.5rem;
+    }
+
+    .demo-steps a {
+        color: white;
+        text-decoration: underline;
+        font-weight: 600;
+    }
+
+    .demo-steps a:hover {
+        opacity: 0.8;
+    }
+
+    .demo-note {
+        margin-top: 2rem;
+        font-size: 1rem;
+        opacity: 0.9;
+        background: rgba(255, 255, 255, 0.15);
+        padding: 1rem;
+        border-radius: 0.5rem;
+    }
+
+    /* How it works */
+    .how-it-works {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 2rem;
+        margin-bottom: 4rem;
+        flex-wrap: wrap;
+    }
+
+    .step {
+        flex: 1;
+        min-width: 200px;
+        text-align: center;
+    }
+
+    .step-number {
+        width: 60px;
+        height: 60px;
+        background: var(--primary);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0 auto 1rem;
+    }
+
+    .step h3 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .step p {
+        color: var(--gray-700);
+    }
+
+    .step-arrow {
+        font-size: 2rem;
+        color: var(--gray-300);
+    }
+
+    .tech-stack {
+        display: flex;
+        justify-content: center;
+        gap: 3rem;
+        flex-wrap: wrap;
+        padding: 3rem;
+        background: var(--gray-50);
+        border-radius: 1rem;
+    }
+
+    .tech-item {
+        text-align: center;
+    }
+
+    .tech-item strong {
+        display: block;
+        font-size: 1.125rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .tech-item span {
+        color: var(--gray-700);
+        font-size: 0.875rem;
+    }
+
+    /* Use Cases */
+    .use-case-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+    }
+
+    .use-case {
+        background: white;
+        padding: 2rem;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .use-case-image {
+        font-size: 4rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .use-case h3 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+    }
+
+    .use-case ul {
+        list-style: none;
+    }
+
+    .use-case li {
+        padding: 0.5rem 0;
+        color: var(--gray-700);
+        border-bottom: 1px solid var(--gray-200);
+    }
+
+    .use-case li:last-child {
+        border-bottom: none;
+    }
+
+    /* Pricing */
+    .pricing-card {
+        max-width: 500px;
+        margin: 0 auto 3rem;
+        background: white;
+        border-radius: 1rem;
+        padding: 3rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .pricing-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .pricing-header h3 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+    }
+
+    .price {
+        display: flex;
+        align-items: baseline;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .price-amount {
+        font-size: 3rem;
+        font-weight: 800;
+        color: var(--primary);
+    }
+
+    .price-period {
+        color: var(--gray-700);
+        font-size: 1rem;
+    }
+
+    .pricing-features {
+        margin-bottom: 2rem;
+    }
+
+    .feature {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 0;
+        border-bottom: 1px solid var(--gray-200);
+    }
+
+    .feature:last-child {
+        border-bottom: none;
+    }
+
+    .feature svg {
+        color: var(--primary);
+        flex-shrink: 0;
+    }
+
+    .pricing-note {
+        text-align: center;
+        margin-bottom: 2rem;
+        color: var(--gray-700);
+    }
+
+    .btn-full {
+        width: 100%;
+        text-align: center;
+    }
+
+    .btn-large {
+        padding: 1.25rem 2.5rem;
+        font-size: 1.125rem;
+    }
+
+    .pricing-breakdown {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .pricing-breakdown h4 {
+        text-align: center;
+        font-size: 1.25rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .breakdown-grid {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+    }
+
+    .breakdown-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 1rem 0;
+        border-bottom: 1px solid var(--gray-200);
+    }
+
+    .breakdown-item:last-child {
+        border-bottom: none;
+        font-weight: 600;
+    }
+
+    /* CTA */
+    .cta-content {
+        text-align: center;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .cta-content h2 {
+        font-size: 3rem;
+        font-weight: 800;
+        margin-bottom: 1rem;
+    }
+
+    .cta-content p {
+        font-size: 1.25rem;
+        opacity: 0.9;
+        margin-bottom: 2rem;
+    }
+
+    .cta-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .btn-outline-light {
+        background: transparent;
+        color: white;
+        padding: 1rem 2rem;
+        border: 2px solid white;
+        border-radius: 0.5rem;
+        text-decoration: none;
+        font-weight: 600;
+        transition: background 0.2s;
+        display: inline-block;
+    }
+
+    .btn-outline-light:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .cta-note {
+        margin-top: 2rem;
+        font-size: 1rem;
+        opacity: 0.8;
+    }
+
+    /* Background Section */
+    .background-content {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 4rem;
+        align-items: start;
+    }
+
+    .background-text h3 {
+        font-size: 1.5rem;
+        margin: 2rem 0 1rem 0;
+    }
+
+    .background-text h3:first-child {
+        margin-top: 0;
+    }
+
+    .background-text p {
+        margin-bottom: 1rem;
+        color: var(--gray-700);
+    }
+
+    .background-text ul,
+    .background-text ol {
+        margin: 1rem 0 1rem 2rem;
+        color: var(--gray-700);
+    }
+
+    .background-text li {
+        margin-bottom: 0.5rem;
+    }
+
+    .status-box {
+        background: white;
+        padding: 2rem;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        position: sticky;
+        top: 100px;
+    }
+
+    .status-box h4 {
+        font-size: 1.25rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .status-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--gray-200);
+    }
+
+    .status-item:last-of-type {
+        border-bottom: none;
+        margin-bottom: 1.5rem;
+    }
+
+    .status-label {
+        font-weight: 600;
+        color: var(--gray-700);
+    }
+
+    .status-value {
+        color: var(--gray-900);
+    }
+
+    .warning-box {
+        background: #fff3cd;
+        border: 2px solid #ffc107;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .warning-box strong {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #856404;
+    }
+
+    .warning-box p {
+        margin: 0;
+        font-size: 0.875rem;
+        color: #856404;
+    }
+
+    /* Roadmap */
+    .roadmap {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+        margin-bottom: 4rem;
+    }
+
+    .roadmap-phase {
+        background: white;
+        padding: 2rem;
+        border-radius: 1rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        border-left: 4px solid var(--gray-300);
+    }
+
+    .roadmap-phase.current,
+    .phase-header.current {
+        border-left-color: var(--primary);
+    }
+
+    .phase-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .phase-badge {
+        background: var(--primary);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .phase-header h3 {
+        font-size: 1.5rem;
+        margin: 0;
+    }
+
+    .phase-goal {
+        margin-bottom: 1rem;
+        color: var(--gray-700);
+    }
+
+    .phase-tasks {
+        list-style: none;
+        margin: 1rem 0;
+    }
+
+    .phase-tasks li {
+        padding: 0.5rem 0;
+        color: var(--gray-700);
+    }
+
+    .phase-success {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--gray-200);
+        color: var(--gray-700);
+        font-style: italic;
+    }
+
+    .future-ideas {
+        background: white;
+        padding: 2rem;
+        border-radius: 1rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .future-ideas h3 {
+        font-size: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .ideas-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .idea {
+        background: var(--gray-50);
+        padding: 1rem;
+        border-radius: 0.5rem;
+        text-align: center;
+        font-size: 0.875rem;
+        color: var(--gray-700);
+    }
+
+    /* Footer */
+    .footer {
+        background: var(--gray-900);
+        color: white;
+        padding: 4rem 2rem 2rem;
+    }
+
+    .footer-content {
+        max-width: 1200px;
+        margin: 0 auto 3rem;
+        display: grid;
+        grid-template-columns: 2fr 3fr;
+        gap: 4rem;
+    }
+
+    .footer-brand p {
+        color: var(--gray-300);
+        margin-top: 1rem;
+    }
+
+    .footer-links {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2rem;
+    }
+
+    .footer-column h4 {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+
+    .footer-column a {
+        display: block;
+        color: var(--gray-300);
+        text-decoration: none;
+        margin-bottom: 0.75rem;
+        transition: color 0.2s;
+    }
+
+    .footer-column a:hover {
+        color: white;
+    }
+
+    .footer-bottom {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding-top: 2rem;
+        border-top: 1px solid var(--gray-700);
+        text-align: center;
+        color: var(--gray-300);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .hero-content {
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        .hero-demo {
+            order: -1;
+        }
+
+        .phone-mockup {
+            max-width: 320px;
+        }
+
+        .phone-content {
+            min-height: 400px;
+            padding: 1rem;
+        }
+
+        .hero h1 {
+            font-size: 2.5rem;
+        }
+
+        .hero-subtitle {
+            font-size: 1.125rem;
+        }
+
+        .hero-cta {
+            flex-direction: column;
+        }
+
+        .hero-stats {
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .section-header h2 {
+            font-size: 2rem;
+        }
+
+        .step-arrow {
+            display: none;
+        }
+
+        .nav-links {
+            display: none;
+        }
+
+        .footer-content {
+            grid-template-columns: 1fr;
+        }
+
+        .footer-links {
+            grid-template-columns: 1fr;
+        }
+
+        .cta-content h2 {
+            font-size: 2rem;
+        }
+
+        .cta-buttons {
+            flex-direction: column;
+        }
+
+        .background-content {
+            grid-template-columns: 1fr;
+        }
+
+        .status-box {
+            position: static;
+        }
+
+        .ideas-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>

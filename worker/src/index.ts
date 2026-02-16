@@ -1,0 +1,1244 @@
+/**
+ * EchoText Worker
+ * Handles incoming calls from Twilio, transcribes audio via Deepgram STT,
+ * and converts text responses to speech via Google Cloud TTS
+ */
+
+export interface Env {
+  CALL_SESSION: DurableObjectNamespace;
+  DEEPGRAM_API_KEY: string;
+  GOOGLE_TTS_API_KEY: string;
+}
+
+/**
+ * Main Worker - routes requests to appropriate handlers
+ */
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url);
+    console.log(`[MAIN] Incoming request: ${request.method} ${url.pathname}`);
+
+    // Serve frontend HTML
+    if (url.pathname === '/' || url.pathname === '/index.html') {
+      console.log('[MAIN] Serving frontend HTML');
+      return new Response(getHTML(), {
+        headers: { 'Content-Type': 'text/html' },
+      });
+    }
+
+    // Twilio incoming call webhook
+    if (url.pathname === '/incoming-call' && request.method === 'POST') {
+      console.log('[MAIN] Handling incoming call from Twilio');
+      const formData = await request.formData();
+      console.log('[MAIN] Twilio webhook data:', Object.fromEntries(formData));
+      return handleIncomingCall(request, env);
+    }
+
+    // WebSocket for Twilio media stream
+    if (url.pathname.startsWith('/media-stream/')) {
+      const sessionId = url.pathname.split('/')[2];
+      console.log(`[MAIN] Media stream WebSocket request for session: ${sessionId}`);
+      return handleMediaStream(request, env, sessionId);
+    }
+
+    // WebSocket for browser client
+    if (url.pathname.startsWith('/client/')) {
+      const sessionId = url.pathname.split('/')[2];
+      console.log(`[MAIN] Client WebSocket request for session: ${sessionId}`);
+      return handleClientConnection(request, env, sessionId);
+    }
+
+    console.log(`[MAIN] 404 Not Found: ${url.pathname}`);
+    return new Response('Not Found', { status: 404 });
+  },
+};
+
+/**
+ * Handles incoming call from Twilio
+ * Returns TwiML to start media stream
+ */
+async function handleIncomingCall(request: Request, env: Env): Promise<Response> {
+  // Use "default" session ID so browser client can connect to the same session
+  // In production, you'd want a way to route multiple calls to different sessions
+  const sessionId = 'default';
+  const url = new URL(request.url);
+  const wsUrl = `wss://${url.host}/media-stream/${sessionId}`;
+
+  console.log(`[INCOMING] Using session ID: ${sessionId}`);
+  console.log(`[INCOMING] WebSocket URL: ${wsUrl}`);
+
+  const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say language="da-DK" voice="Google.da-DK-Wavenet-F">Velkommen til EchoText. Dette er en eksperimentel service der bruger kunstig intelligens til at omdanne tale til tekst, så døve og hørehæmmede kan føre telefonsamtaler. Din samtale bliver transskriberet i realtid. Vent venligst mens opkaldet besvares.</Say>
+  <Connect>
+    <Stream url="${wsUrl}" track="inbound_track" />
+  </Connect>
+</Response>`;
+
+  console.log('[INCOMING] Sending TwiML response');
+  return new Response(twiml, {
+    headers: { 'Content-Type': 'text/xml' },
+  });
+}
+
+/**
+ * Handles WebSocket connection from Twilio media stream
+ */
+async function handleMediaStream(
+  request: Request,
+  env: Env,
+  sessionId: string
+): Promise<Response> {
+  const id = env.CALL_SESSION.idFromName(sessionId);
+  const stub = env.CALL_SESSION.get(id);
+  return stub.fetch(request);
+}
+
+/**
+ * Handles WebSocket connection from browser client
+ */
+async function handleClientConnection(
+  request: Request,
+  env: Env,
+  sessionId: string
+): Promise<Response> {
+  const id = env.CALL_SESSION.idFromName(sessionId);
+  const stub = env.CALL_SESSION.get(id);
+  return stub.fetch(request);
+}
+
+/**
+ * Durable Object - manages a single call session
+ * Coordinates between Twilio audio stream, Deepgram transcription, and browser client
+ */
+export class CallSession {
+  private state: DurableObjectState;
+  private env: Env;
+  private twilioWs: WebSocket | null = null;
+  private clientWs: WebSocket | null = null;
+  private deepgramWs: WebSocket | null = null;
+  private sessionId: string = '';
+  private callActive: boolean = false;
+  private deepgramConnected: boolean = false;
+  private twilioStreamStarted: boolean = false;
+  private streamSid: string = '';
+  private callAccepted: boolean = false;
+  private callTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  constructor(state: DurableObjectState, env: Env) {
+    this.state = state;
+    this.env = env;
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    this.sessionId = url.pathname.split('/').pop() || 'unknown';
+    console.log(`[DO] Durable Object fetch: ${url.pathname} (sessionId: ${this.sessionId})`);
+
+    // Handle WebSocket upgrade
+    if (request.headers.get('Upgrade') === 'websocket') {
+      console.log('[DO] WebSocket upgrade request');
+      const pair = new WebSocketPair();
+      const [client, server] = Object.values(pair);
+
+      // Determine if this is Twilio or browser client
+      if (url.pathname.includes('/media-stream/')) {
+        console.log('[DO] Handling Twilio media stream WebSocket');
+        await this.handleTwilioWebSocket(server);
+      } else if (url.pathname.includes('/client/')) {
+        console.log('[DO] Handling browser client WebSocket');
+        await this.handleClientWebSocket(server);
+      }
+
+      return new Response(null, {
+        status: 101,
+        webSocket: client,
+      });
+    }
+
+    console.log('[DO] Expected WebSocket but got regular request');
+    return new Response('Expected WebSocket', { status: 400 });
+  }
+
+  /**
+   * Handles WebSocket connection from Twilio media stream
+   */
+  async handleTwilioWebSocket(ws: WebSocket): Promise<void> {
+    console.log(`[TWILIO-WS] Accepting WebSocket connection (session: ${this.sessionId})`);
+    this.twilioWs = ws;
+    ws.accept();
+
+    // Connect to Deepgram when Twilio connects
+    console.log('[TWILIO-WS] Connecting to Deepgram...');
+    await this.connectToDeepgram();
+
+    ws.addEventListener('message', async (event) => {
+      try {
+        const message = JSON.parse(event.data as string);
+        console.log(`[TWILIO-WS] Received message: ${message.event} (streamSid: ${message.streamSid || 'N/A'})`);
+
+        // Handle different Twilio message types
+        switch (message.event) {
+          case 'start':
+            console.log('[TWILIO-WS] Stream started:', JSON.stringify(message.start));
+            this.streamSid = message.streamSid || message.start?.streamSid || '';
+            console.log(`[TWILIO-WS] StreamSid: ${this.streamSid}`);
+            this.twilioStreamStarted = true;
+            this.callActive = true;
+            this.callAccepted = false;
+            // Notify browser of incoming call - user must accept
+            this.notifyClient({
+              type: 'call-incoming',
+              data: message.start,
+              debug: {
+                deepgramConnected: this.deepgramConnected,
+                sessionId: this.sessionId
+              }
+            });
+            // Auto-timeout after 30 seconds if not accepted
+            this.callTimeout = setTimeout(() => {
+              if (!this.callAccepted && this.callActive) {
+                console.log('[TWILIO-WS] Call timeout - not accepted within 30s');
+                this.notifyClient({ type: 'call-timeout' });
+                this.cleanup();
+              }
+            }, 30000);
+            break;
+
+          case 'media':
+            // Only forward audio to Deepgram if call has been accepted
+            if (!this.callAccepted) break;
+            if (this.deepgramWs && this.deepgramConnected && message.media.payload) {
+              try {
+                // Twilio sends base64 encoded mulaw audio
+                // Deepgram requires raw binary data, not JSON
+                const audioBuffer = Uint8Array.from(atob(message.media.payload), c => c.charCodeAt(0));
+                this.deepgramWs.send(audioBuffer);
+              } catch (err) {
+                console.error('[TWILIO-WS] Error decoding/sending audio:', err);
+              }
+            } else {
+              if (!this.deepgramWs) {
+                console.warn('[TWILIO-WS] No Deepgram WebSocket instance');
+              } else if (!this.deepgramConnected) {
+                console.warn('[TWILIO-WS] Deepgram not connected yet');
+              } else if (!message.media.payload) {
+                console.warn('[TWILIO-WS] No payload in media message');
+              }
+            }
+            break;
+
+          case 'stop':
+            console.log('[TWILIO-WS] Stream stopped');
+            this.twilioStreamStarted = false;
+            this.callActive = false;
+            this.notifyClient({ type: 'call-ended' });
+            this.cleanup();
+            break;
+        }
+      } catch (err) {
+        console.error('[TWILIO-WS] Error processing message:', err);
+        this.notifyClient({
+          type: 'error',
+          message: 'Error processing Twilio message',
+          details: String(err)
+        });
+      }
+    });
+
+    ws.addEventListener('close', (event) => {
+      console.log(`[TWILIO-WS] WebSocket closed (code: ${event.code}, reason: ${event.reason || 'none'})`);
+      this.twilioWs = null;
+      this.twilioStreamStarted = false;
+      this.callActive = false;
+      this.notifyClient({ type: 'twilio-disconnected', code: event.code, reason: event.reason });
+      this.cleanup();
+    });
+
+    ws.addEventListener('error', (event) => {
+      console.error('[TWILIO-WS] WebSocket error:', event);
+      this.notifyClient({ type: 'error', message: 'Twilio WebSocket error' });
+      this.cleanup();
+    });
+  }
+
+  /**
+   * Handles WebSocket connection from browser client
+   */
+  async handleClientWebSocket(ws: WebSocket): Promise<void> {
+    console.log(`[CLIENT-WS] Accepting client connection (session: ${this.sessionId})`);
+    this.clientWs = ws;
+    ws.accept();
+
+    // Send initial state to client
+    this.notifyClient({
+      type: 'connected',
+      sessionId: this.sessionId,
+      state: {
+        callActive: this.callActive,
+        twilioConnected: !!this.twilioWs,
+        deepgramConnected: this.deepgramConnected
+      }
+    });
+
+    ws.addEventListener('message', async (event) => {
+      try {
+        const message = JSON.parse(event.data as string);
+        console.log(`[CLIENT-WS] Received message type: ${message.type}`);
+
+        // Handle call accept/reject
+        if (message.type === 'call-accept') {
+          console.log('[CLIENT-WS] Call accepted by user');
+          this.callAccepted = true;
+          if (this.callTimeout) {
+            clearTimeout(this.callTimeout);
+            this.callTimeout = null;
+          }
+          this.notifyClient({
+            type: 'call-started',
+            debug: {
+              deepgramConnected: this.deepgramConnected,
+              sessionId: this.sessionId
+            }
+          });
+          // Tell the caller they're connected
+          await this.synthesizeSpeech('Du er nu forbundet. Du kan begynde at tale.');
+        } else if (message.type === 'call-reject') {
+          console.log('[CLIENT-WS] Call rejected by user');
+          this.notifyClient({ type: 'call-rejected' });
+          this.cleanup();
+        // Handle text response from user
+        } else if (message.type === 'user-response' && message.text) {
+          console.log(`[CLIENT-WS] User response: ${message.text}`);
+          await this.synthesizeSpeech(message.text);
+        } else if (message.type === 'ping') {
+          // Respond to ping with state info
+          this.notifyClient({
+            type: 'pong',
+            state: {
+              callActive: this.callActive,
+              twilioConnected: !!this.twilioWs,
+              deepgramConnected: this.deepgramConnected
+            }
+          });
+        }
+      } catch (err) {
+        console.error('[CLIENT-WS] Error processing client message:', err);
+        this.notifyClient({
+          type: 'error',
+          message: 'Error processing message',
+          details: String(err)
+        });
+      }
+    });
+
+    ws.addEventListener('close', (event) => {
+      console.log(`[CLIENT-WS] WebSocket closed (code: ${event.code}, reason: ${event.reason || 'none'})`);
+      this.clientWs = null;
+    });
+
+    ws.addEventListener('error', (event) => {
+      console.error('[CLIENT-WS] WebSocket error:', event);
+    });
+  }
+
+  /**
+   * Connects to Deepgram for live transcription
+   */
+  async connectToDeepgram(): Promise<void> {
+    // Deepgram streaming API parameters
+    // See: https://developers.deepgram.com/reference/speech-to-text/listen-streaming
+    const params = new URLSearchParams({
+      language: 'da',           // Danish
+      encoding: 'mulaw',        // Twilio uses mulaw encoding
+      sample_rate: '8000',      // Twilio uses 8kHz
+      model: 'nova-2',          // Latest streaming model
+      interim_results: 'true',  // Get partial results as they come
+      punctuate: 'true',        // Add punctuation
+      vad_events: 'true',       // Voice activity detection events
+    });
+
+    // IMPORTANT: Use https:// not wss:// in Cloudflare Workers!
+    // Cloudflare automatically handles WebSocket upgrade
+    const deepgramUrl = `https://api.deepgram.com/v1/listen?${params.toString()}`;
+
+    try {
+      console.log(`[DEEPGRAM] Connecting to Deepgram (session: ${this.sessionId})...`);
+      console.log('[DEEPGRAM] URL:', deepgramUrl);
+
+      const response = await fetch(deepgramUrl, {
+        headers: {
+          'Authorization': `Token ${this.env.DEEPGRAM_API_KEY}`,
+          'Upgrade': 'websocket',
+        },
+      });
+
+      console.log('[DEEPGRAM] Response status:', response.status);
+      console.log('[DEEPGRAM] Has webSocket:', !!response.webSocket);
+
+      if (response.webSocket) {
+        this.deepgramWs = response.webSocket;
+        this.deepgramWs.accept();
+        this.deepgramConnected = true;
+        console.log('[DEEPGRAM] WebSocket accepted and ready');
+
+        this.notifyClient({
+          type: 'deepgram-connected',
+          sessionId: this.sessionId
+        });
+
+        this.deepgramWs.addEventListener('message', (event) => {
+          try {
+            const data = JSON.parse(event.data as string);
+
+            // Handle different Deepgram message types
+            if (data.type === 'Metadata') {
+              console.log('[DEEPGRAM] Metadata received:', JSON.stringify(data));
+            } else if (data.type === 'SpeechStarted') {
+              console.log('[DEEPGRAM] Speech started detected');
+              this.notifyClient({ type: 'speech-started' });
+            } else if (data.type === 'UtteranceEnd') {
+              console.log('[DEEPGRAM] Utterance end detected');
+              this.notifyClient({ type: 'utterance-end' });
+            } else if (data.type === 'Results') {
+              console.log('[DEEPGRAM] Results received, is_final:', data.is_final);
+
+              // Extract transcript
+              if (data.channel?.alternatives?.[0]?.transcript) {
+                const transcript = data.channel.alternatives[0].transcript;
+                const confidence = data.channel.alternatives[0].confidence || 0;
+
+                if (transcript.trim()) {
+                  console.log(`[DEEPGRAM] Transcript (${data.is_final ? 'FINAL' : 'interim'}):`, transcript, `(confidence: ${confidence.toFixed(2)})`);
+                  this.notifyClient({
+                    type: 'transcription',
+                    text: transcript,
+                    is_final: data.is_final || false,
+                    confidence: confidence,
+                  });
+                }
+              } else {
+                console.log('[DEEPGRAM] Results with no transcript (silence/noise)');
+              }
+            } else {
+              console.log('[DEEPGRAM] Unknown message type:', data.type || 'undefined');
+            }
+          } catch (err) {
+            console.error('[DEEPGRAM] Error processing message:', err);
+            this.notifyClient({
+              type: 'error',
+              message: 'Deepgram processing error',
+              details: String(err)
+            });
+          }
+        });
+
+        this.deepgramWs.addEventListener('close', (event) => {
+          console.log(`[DEEPGRAM] WebSocket closed (code: ${event.code}, reason: ${event.reason || 'none'})`);
+          this.deepgramWs = null;
+          this.deepgramConnected = false;
+          this.notifyClient({
+            type: 'deepgram-disconnected',
+            code: event.code,
+            reason: event.reason
+          });
+        });
+
+        this.deepgramWs.addEventListener('error', (event) => {
+          console.error('[DEEPGRAM] WebSocket error:', event);
+          this.deepgramConnected = false;
+          this.notifyClient({
+            type: 'error',
+            message: 'Deepgram WebSocket error'
+          });
+        });
+      } else {
+        console.error('[DEEPGRAM] No webSocket in response');
+        this.notifyClient({ type: 'error', message: 'Failed to get Deepgram WebSocket' });
+      }
+    } catch (err) {
+      console.error('[DEEPGRAM] Error connecting:', err);
+      this.notifyClient({
+        type: 'error',
+        message: 'Failed to connect to Deepgram',
+        details: String(err)
+      });
+    }
+  }
+
+  /**
+   * Synthesizes speech from text using Google Cloud TTS and plays it to caller
+   */
+  async synthesizeSpeech(text: string): Promise<void> {
+    try {
+      console.log(`[TTS] Synthesizing speech with Google TTS: "${text}"`);
+
+      if (!this.twilioWs) {
+        console.error('[TTS] No Twilio WebSocket connection');
+        this.notifyClient({ type: 'error', message: 'No active call to send audio to' });
+        return;
+      }
+
+      // Call Google Cloud TTS API
+      // See: https://cloud.google.com/text-to-speech/docs/reference/rest/v1/text/synthesize
+      const response = await fetch(
+        `https://texttospeech.googleapis.com/v1/text:synthesize?key=${this.env.GOOGLE_TTS_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            input: { text },
+            voice: {
+              languageCode: 'da-DK',
+              name: 'da-DK-Wavenet-F',  // Danish female Wavenet voice (matches Twilio Say voice)
+              ssmlGender: 'FEMALE',
+            },
+            audioConfig: {
+              audioEncoding: 'MULAW',    // Twilio uses mulaw encoding
+              sampleRateHertz: 8000,     // Twilio uses 8kHz
+            },
+          }),
+        }
+      );
+
+      console.log('[TTS] Google TTS response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[TTS] Google TTS error:', errorText);
+        this.notifyClient({
+          type: 'error',
+          message: 'TTS API error',
+          details: errorText
+        });
+        return;
+      }
+
+      const data = await response.json() as { audioContent?: string };
+
+      if (data.audioContent && this.twilioWs) {
+        console.log('[TTS] Sending audio to Twilio (length:', data.audioContent.length, ')');
+
+        // Google TTS returns base64 encoded audio directly
+        // Send it back to Twilio - streamSid is required
+        if (!this.streamSid) {
+          console.error('[TTS] No streamSid available - cannot send audio');
+          this.notifyClient({ type: 'error', message: 'No active stream to send audio to' });
+          return;
+        }
+
+        this.twilioWs.send(
+          JSON.stringify({
+            event: 'media',
+            streamSid: this.streamSid,
+            media: {
+              payload: data.audioContent,
+            },
+          })
+        );
+
+        this.notifyClient({ type: 'speech-sent', text });
+      } else {
+        console.error('[TTS] No audio content in response or Twilio disconnected');
+        this.notifyClient({ type: 'error', message: 'No audio content received from TTS' });
+      }
+    } catch (err) {
+      console.error('[TTS] Error synthesizing speech:', err);
+      this.notifyClient({
+        type: 'error',
+        message: 'Failed to synthesize speech',
+        details: String(err)
+      });
+    }
+  }
+
+  /**
+   * Sends a message to the browser client
+   */
+  notifyClient(message: any): void {
+    if (this.clientWs) {
+      this.clientWs.send(JSON.stringify(message));
+    }
+  }
+
+  /**
+   * Cleans up call-related connections (but keeps client WebSocket alive)
+   */
+  cleanup(): void {
+    console.log('[CLEANUP] Cleaning up call connections...');
+    if (this.deepgramWs) {
+      this.deepgramWs.close();
+      this.deepgramWs = null;
+      this.deepgramConnected = false;
+    }
+    if (this.twilioWs) {
+      this.twilioWs.close();
+      this.twilioWs = null;
+    }
+    // DON'T close clientWs - keep browser connection alive for next call
+    this.callActive = false;
+    this.twilioStreamStarted = false;
+    this.streamSid = '';
+    this.callAccepted = false;
+    if (this.callTimeout) {
+      clearTimeout(this.callTimeout);
+      this.callTimeout = null;
+    }
+  }
+}
+
+/**
+ * Returns the HTML for the browser client
+ */
+function getHTML(): string {
+  return `<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EchoText - Live Transskription</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%23667eea;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%23764ba2;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='48' fill='url(%23grad)'/%3E%3Cpath d='M35 25 C35 22 37 20 40 20 L60 20 C63 20 65 22 65 25 L65 75 C65 78 63 80 60 80 L40 80 C37 80 35 78 35 75 Z' fill='white' opacity='0.95'/%3E%3Crect x='38' y='28' width='24' height='36' rx='1' fill='url(%23grad)' opacity='0.3'/%3E%3Cline x1='42' y1='35' x2='56' y2='35' stroke='url(%23grad)' stroke-width='2' stroke-linecap='round'/%3E%3Cline x1='42' y1='42' x2='54' y2='42' stroke='url(%23grad)' stroke-width='2' stroke-linecap='round'/%3E%3Cline x1='42' y1='49' x2='58' y2='49' stroke='url(%23grad)' stroke-width='2' stroke-linecap='round'/%3E%3Cline x1='42' y1='56' x2='52' y2='56' stroke='url(%23grad)' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='50' cy='72' r='3' fill='%23667eea' opacity='0.4'/%3E%3C/svg%3E">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+      background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
+      color: #fff;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    h1 {
+      margin-bottom: 0;
+      font-size: 32px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.5px;
+    }
+    .status {
+      padding: 20px 24px;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+    }
+    .status.connected {
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(22, 163, 74, 0.1) 100%);
+      border-color: rgba(34, 197, 94, 0.3);
+    }
+    .status.calling {
+      background: linear-gradient(135deg, rgba(96, 165, 250, 0.2) 0%, rgba(59, 130, 246, 0.15) 100%);
+      border-color: rgba(96, 165, 250, 0.4);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.8; }
+    }
+    .status-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #666;
+      transition: all 0.3s ease;
+    }
+    .status.connected .status-indicator {
+      background: #4ade80;
+      box-shadow: 0 0 10px #4ade80;
+    }
+    .status.calling .status-indicator {
+      background: #60a5fa;
+      box-shadow: 0 0 10px #60a5fa;
+      animation: blink 1s infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    .transcription-box {
+      background: #2a2a2a;
+      border-radius: 8px;
+      padding: 20px;
+      min-height: 300px;
+      margin-bottom: 20px;
+      max-height: 500px;
+      overflow-y: auto;
+      position: relative;
+    }
+    .listening-indicator {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: rgba(96, 165, 250, 0.2);
+      border: 1px solid #60a5fa;
+      border-radius: 20px;
+      font-size: 12px;
+      color: #60a5fa;
+    }
+    .listening-indicator.active {
+      display: flex;
+    }
+    .listening-dot {
+      width: 8px;
+      height: 8px;
+      background: #60a5fa;
+      border-radius: 50%;
+      animation: pulse-dot 1.5s infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.3); opacity: 0.7; }
+    }
+    .transcript-line {
+      margin-bottom: 10px;
+      padding: 12px;
+      background: #333;
+      border-radius: 6px;
+      border-left: 3px solid transparent;
+      transition: all 0.3s ease;
+      animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    .transcript-line.interim {
+      background: #2d3748;
+      border-left-color: #60a5fa;
+      font-style: italic;
+      opacity: 0.8;
+    }
+    .transcript-line.final {
+      background: #3a3a3a;
+      border-left-color: #4ade80;
+    }
+    .transcript-line.user-response {
+      background: #1e3a5f;
+      border-left-color: #3b82f6;
+    }
+    .transcript-confidence {
+      font-size: 10px;
+      color: #888;
+      margin-top: 4px;
+    }
+    .response-form {
+      display: flex;
+      gap: 10px;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 15px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      background: #2a2a2a;
+      color: #fff;
+    }
+    button {
+      padding: 15px 30px;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      background: #0066ff;
+      color: #fff;
+      cursor: pointer;
+    }
+    button:hover { background: #0052cc; }
+    button:disabled {
+      background: #444;
+      cursor: not-allowed;
+    }
+    /* Incoming call overlay */
+    .incoming-call {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      background: linear-gradient(135deg, rgba(96, 165, 250, 0.15) 0%, rgba(59, 130, 246, 0.1) 100%);
+      border: 2px solid rgba(96, 165, 250, 0.4);
+      border-radius: 16px;
+      margin-bottom: 24px;
+      animation: incoming-pulse 2s ease-in-out infinite;
+    }
+    .incoming-call.active {
+      display: flex;
+    }
+    @keyframes incoming-pulse {
+      0%, 100% { border-color: rgba(96, 165, 250, 0.4); box-shadow: 0 0 20px rgba(96, 165, 250, 0.1); }
+      50% { border-color: rgba(96, 165, 250, 0.8); box-shadow: 0 0 40px rgba(96, 165, 250, 0.3); }
+    }
+    .incoming-call-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+      animation: ring 1.5s ease-in-out infinite;
+    }
+    @keyframes ring {
+      0% { transform: rotate(0deg); }
+      10% { transform: rotate(15deg); }
+      20% { transform: rotate(-15deg); }
+      30% { transform: rotate(10deg); }
+      40% { transform: rotate(-10deg); }
+      50% { transform: rotate(5deg); }
+      60% { transform: rotate(0deg); }
+      100% { transform: rotate(0deg); }
+    }
+    .incoming-call-text {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .incoming-call-timer {
+      font-size: 14px;
+      color: #888;
+      margin-bottom: 24px;
+    }
+    .incoming-call-buttons {
+      display: flex;
+      gap: 16px;
+    }
+    .btn-accept {
+      padding: 16px 40px;
+      font-size: 18px;
+      font-weight: 700;
+      border: none;
+      border-radius: 50px;
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      color: #fff;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-accept:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 20px rgba(34, 197, 94, 0.4);
+    }
+    .btn-reject {
+      padding: 16px 40px;
+      font-size: 18px;
+      font-weight: 700;
+      border: none;
+      border-radius: 50px;
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: #fff;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-reject:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+      <h1 style="margin-bottom: 0;">EchoText - Live Transskription</h1>
+      <a href="https://echotext.dk" target="_blank" style="color: #667eea; text-decoration: none; font-weight: 600; font-size: 14px; padding: 8px 16px; border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 8px; transition: all 0.2s;">Læs mere om EchoText &rarr;</a>
+    </div>
+
+    <div style="background: rgba(255, 193, 7, 0.15); border: 2px solid #ffc107; border-radius: 12px; padding: 16px; margin-bottom: 24px;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+        <span style="font-size: 24px;">⚠️</span>
+        <strong style="color: #ffc107; font-size: 18px;">Under udvikling</strong>
+      </div>
+      <p style="color: #ffc107; margin-bottom: 12px; line-height: 1.5;">
+        Denne app er stadig under udvikling. Live transskription og tekst-til-tale svar virker - prøv det!
+      </p>
+      <div style="background: rgba(0, 0, 0, 0.2); padding: 12px; border-radius: 8px; margin-top: 12px;">
+        <p style="color: #fff; font-size: 14px; margin-bottom: 8px;"><strong>📞 Sådan tester du:</strong></p>
+        <ol style="color: #fff; font-size: 14px; line-height: 1.8; padding-left: 20px;">
+          <li>Hold denne side åben i din browser</li>
+          <li>Ring til <strong style="color: #60a5fa;">+45 52 51 36 34</strong> fra din telefon</li>
+          <li>Begynd at snakke og se live transskription herunder</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="status" id="status">
+      <div class="status-indicator"></div>
+      <span id="statusText">Venter på opkald...</span>
+    </div>
+
+    <div class="incoming-call" id="incomingCall">
+      <div class="incoming-call-icon">📞</div>
+      <div class="incoming-call-text">Indgående opkald</div>
+      <div class="incoming-call-timer" id="incomingTimer"></div>
+      <div class="incoming-call-buttons">
+        <button class="btn-accept" id="btnAccept">Tag opkald</button>
+        <button class="btn-reject" id="btnReject">Afvis</button>
+      </div>
+    </div>
+
+    <div class="transcription-box" id="transcription">
+      <div class="listening-indicator" id="listeningIndicator">
+        <div class="listening-dot"></div>
+        <span>Lytter...</span>
+      </div>
+      <p style="color: #888;">Transskription vises her når opkaldet starter...</p>
+    </div>
+
+    <form class="response-form" id="responseForm">
+      <input
+        type="text"
+        id="responseInput"
+        placeholder="Venter på opkald..."
+        disabled
+        style="opacity: 0.5;"
+      />
+      <button type="submit" id="sendBtn" disabled style="opacity: 0.5;">Send</button>
+    </form>
+  </div>
+
+  <script>
+    let ws = null;
+    let reconnectAttempts = 0;
+    let maxReconnectDelay = 30000; // Max 30 seconds
+    let reconnectTimer = null;
+    let pingInterval = null;
+    let incomingTimerInterval = null;
+    let incomingTimerSeconds = 30;
+    const sessionId = 'default'; // In production, generate unique session ID
+
+    function connect() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = \`\${protocol}//\${window.location.host}/client/\${sessionId}\`;
+
+      console.log('[CLIENT] Connecting to:', wsUrl, '(attempt', reconnectAttempts + 1 + ')');
+
+      try {
+        ws = new WebSocket(wsUrl);
+      } catch (err) {
+        console.error('[CLIENT] Failed to create WebSocket:', err);
+        scheduleReconnect();
+        return;
+      }
+
+      ws.onopen = () => {
+        console.log('[CLIENT] Connected to EchoText');
+        reconnectAttempts = 0; // Reset on successful connection
+        updateStatus('Forbundet - venter på opkald', 'connected');
+
+        // Start ping/pong heartbeat
+        if (pingInterval) clearInterval(pingInterval);
+        pingInterval = setInterval(() => {
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            console.log('[CLIENT] Sending ping');
+            ws.send(JSON.stringify({ type: 'ping' }));
+          }
+        }, 15000); // Ping every 15 seconds
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          console.log('[CLIENT] Received message:', message.type, message);
+
+          switch (message.type) {
+            case 'connected':
+              console.log('[CLIENT] Initial connection state:', message.state);
+              updateStatus('Forbundet - venter på opkald', 'connected');
+              break;
+
+            case 'call-incoming':
+              console.log('[CLIENT] Incoming call!', message.debug);
+              updateStatus('📞 Indgående opkald...', 'calling');
+              showIncomingCall();
+              break;
+
+            case 'call-started':
+              console.log('[CLIENT] Call started, debug:', message.debug);
+              hideIncomingCall();
+              updateStatus('📞 Opkald i gang', 'calling');
+              document.getElementById('responseInput').disabled = false;
+              document.getElementById('responseInput').style.opacity = '1';
+              document.getElementById('responseInput').placeholder = 'Skriv dit svar her...';
+              document.getElementById('sendBtn').disabled = false;
+              document.getElementById('sendBtn').style.opacity = '1';
+              // Remove "waiting" message if present
+              {
+                const waitingMsg = document.getElementById('transcription').querySelector('p[style]');
+                if (waitingMsg) waitingMsg.remove();
+              }
+              break;
+
+            case 'call-ended':
+              hideIncomingCall();
+              updateStatus('Opkald afsluttet', 'connected');
+              document.getElementById('responseInput').disabled = true;
+              document.getElementById('responseInput').style.opacity = '0.5';
+              document.getElementById('responseInput').placeholder = 'Venter på opkald...';
+              document.getElementById('sendBtn').disabled = true;
+              document.getElementById('sendBtn').style.opacity = '0.5';
+              break;
+
+            case 'call-timeout':
+              console.log('[CLIENT] Call timed out');
+              hideIncomingCall();
+              updateStatus('Opkald ikke besvaret', 'connected');
+              addDebugMessage('Opkald ikke besvaret (timeout)');
+              break;
+
+            case 'call-rejected':
+              console.log('[CLIENT] Call rejected');
+              hideIncomingCall();
+              updateStatus('Opkald afvist', 'connected');
+              break;
+
+            case 'transcription':
+              addTranscription(message.text, message.is_final, message.confidence);
+              break;
+
+            case 'deepgram-connected':
+              console.log('[CLIENT] Deepgram connected');
+              // Don't show debug message - connection is implicit
+              break;
+
+            case 'deepgram-disconnected':
+              console.log('[CLIENT] Deepgram disconnected:', message.code, message.reason);
+              // Only show if unexpected disconnection
+              if (message.code !== 1000) {
+                addDebugMessage('⚠️ Deepgram afbrudt');
+              }
+              break;
+
+            case 'speech-started':
+              console.log('[CLIENT] Speech detection started');
+              document.getElementById('listeningIndicator').classList.add('active');
+              // Don't add debug message - just show animation
+              break;
+
+            case 'utterance-end':
+              console.log('[CLIENT] Utterance ended');
+              document.getElementById('listeningIndicator').classList.remove('active');
+              // Don't add debug message - just hide animation
+              break;
+
+            case 'twilio-disconnected':
+              console.log('[CLIENT] Twilio disconnected:', message.code, message.reason);
+              // Only show if unexpected disconnection during active call
+              if (message.code !== 1000 && message.code !== 1001) {
+                addDebugMessage('⚠️ Opkald afbrudt uventet');
+              }
+              break;
+
+            case 'speech-sent':
+              console.log('[CLIENT] Speech sent to caller');
+              // Visual feedback is already shown in transcript
+              break;
+
+            case 'pong':
+              console.log('[CLIENT] Pong received, state:', message.state);
+              break;
+
+            case 'error':
+              console.error('[CLIENT] Error:', message.message, message.details);
+              addDebugMessage('❌ Fejl: ' + message.message);
+              if (message.details) {
+                console.error('[CLIENT] Error details:', message.details);
+              }
+              break;
+
+            default:
+              console.log('[CLIENT] Unknown message type:', message.type);
+          }
+        } catch (err) {
+          console.error('[CLIENT] Error processing message:', err);
+        }
+      };
+
+      ws.onclose = (event) => {
+        console.log('[CLIENT] WebSocket closed (code:', event.code, ', reason:', event.reason || 'none', ')');
+
+        if (pingInterval) {
+          clearInterval(pingInterval);
+          pingInterval = null;
+        }
+
+        // Code 1001 = going away (often happens during worker upgrade)
+        if (event.code === 1001) {
+          updateStatus('Worker blev opgraderet - genopret forbindelse...', 'reconnecting');
+          addDebugMessage('⚠️ Worker upgrade detekteret - genopret forbindelse');
+        } else {
+          updateStatus('Forbindelse afbrudt - prøver igen...', 'reconnecting');
+        }
+
+        scheduleReconnect();
+      };
+
+      ws.onerror = (error) => {
+        console.error('[CLIENT] WebSocket error:', error);
+        addDebugMessage('❌ WebSocket fejl');
+      };
+    }
+
+    function scheduleReconnect() {
+      if (reconnectTimer) return; // Already scheduled
+
+      // Exponential backoff: 1s, 2s, 4s, 8s, 16s, up to max
+      const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), maxReconnectDelay);
+      reconnectAttempts++;
+
+      console.log('[CLIENT] Scheduling reconnect in', delay, 'ms (attempt', reconnectAttempts, ')');
+      updateStatus(\`Genopret forbindelse om \${Math.round(delay/1000)}s...\`, false);
+
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        connect();
+      }, delay);
+    }
+
+    function addDebugMessage(text) {
+      const transcriptionBox = document.getElementById('transcription');
+      const debugLine = document.createElement('div');
+      debugLine.className = 'transcript-line';
+      debugLine.style.background = '#2a2a2a';
+      debugLine.style.color = '#888';
+      debugLine.style.fontSize = '12px';
+      debugLine.style.fontStyle = 'italic';
+      debugLine.textContent = '[' + new Date().toLocaleTimeString('da-DK') + '] ' + text;
+      transcriptionBox.appendChild(debugLine);
+      transcriptionBox.scrollTop = transcriptionBox.scrollHeight;
+    }
+
+    function updateStatus(text, state) {
+      const statusEl = document.getElementById('status');
+      const statusText = document.getElementById('statusText');
+      statusText.textContent = text;
+
+      // Update CSS class based on state
+      statusEl.className = 'status';
+      if (state === 'connected') {
+        statusEl.classList.add('connected');
+      } else if (state === 'calling') {
+        statusEl.classList.add('calling');
+      }
+    }
+
+    function addTranscription(text, isFinal, confidence) {
+      const transcriptionBox = document.getElementById('transcription');
+
+      // Remove "waiting" message if present
+      const waitingMsg = transcriptionBox.querySelector('p[style]');
+      if (waitingMsg) {
+        waitingMsg.remove();
+      }
+
+      // Update or create transcript line
+      let line = document.getElementById('current-line');
+      if (isFinal || !line) {
+        line = document.createElement('div');
+        line.className = 'transcript-line';
+        line.id = isFinal ? '' : 'current-line';
+
+        if (isFinal) {
+          line.classList.add('final');
+        } else {
+          line.classList.add('interim');
+        }
+
+        transcriptionBox.appendChild(line);
+      }
+
+      line.textContent = text;
+
+      // Add confidence indicator for final transcripts
+      if (isFinal && confidence !== undefined) {
+        const confidenceBar = document.createElement('div');
+        confidenceBar.className = 'transcript-confidence';
+        const percentage = Math.round(confidence * 100);
+        const emoji = percentage > 90 ? '✨' : percentage > 70 ? '👍' : '🤔';
+        confidenceBar.textContent = \`\${emoji} Sikkerhed: \${percentage}%\`;
+        line.appendChild(confidenceBar);
+      }
+
+      transcriptionBox.scrollTop = transcriptionBox.scrollHeight;
+    }
+
+    function showIncomingCall() {
+      document.getElementById('incomingCall').classList.add('active');
+      incomingTimerSeconds = 30;
+      document.getElementById('incomingTimer').textContent = 'Besvares automatisk ikke om ' + incomingTimerSeconds + 's';
+      if (incomingTimerInterval) clearInterval(incomingTimerInterval);
+      incomingTimerInterval = setInterval(() => {
+        incomingTimerSeconds--;
+        if (incomingTimerSeconds <= 0) {
+          clearInterval(incomingTimerInterval);
+          incomingTimerInterval = null;
+          return;
+        }
+        document.getElementById('incomingTimer').textContent = 'Besvares automatisk ikke om ' + incomingTimerSeconds + 's';
+      }, 1000);
+    }
+
+    function hideIncomingCall() {
+      document.getElementById('incomingCall').classList.remove('active');
+      if (incomingTimerInterval) {
+        clearInterval(incomingTimerInterval);
+        incomingTimerInterval = null;
+      }
+    }
+
+    document.getElementById('btnAccept').addEventListener('click', () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'call-accept' }));
+      }
+    });
+
+    document.getElementById('btnReject').addEventListener('click', () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'call-reject' }));
+      }
+    });
+
+    document.getElementById('responseForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = document.getElementById('responseInput');
+      const text = input.value.trim();
+
+      if (text && ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'user-response',
+          text: text
+        }));
+
+        // Add user's response to transcription
+        const transcriptionBox = document.getElementById('transcription');
+        const userLine = document.createElement('div');
+        userLine.className = 'transcript-line user-response';
+        userLine.textContent = '💬 Du: ' + text;
+        transcriptionBox.appendChild(userLine);
+        transcriptionBox.scrollTop = transcriptionBox.scrollHeight;
+
+        input.value = '';
+      }
+    });
+
+    // Connect on page load
+    connect();
+  </script>
+</body>
+</html>`;
+}

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="50" cy="50" r="48" fill="url(#grad)"/>
+
+  <!-- Phone icon -->
+  <path d="M35 25 C35 22 37 20 40 20 L60 20 C63 20 65 22 65 25 L65 75 C65 78 63 80 60 80 L40 80 C37 80 35 78 35 75 Z"
+        fill="white" opacity="0.95"/>
+
+  <!-- Screen -->
+  <rect x="38" y="28" width="24" height="36" rx="1" fill="url(#grad)" opacity="0.3"/>
+
+  <!-- Text lines (representing transcript) -->
+  <line x1="42" y1="35" x2="56" y2="35" stroke="url(#grad)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="42" y1="42" x2="54" y2="42" stroke="url(#grad)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="42" y1="49" x2="58" y2="49" stroke="url(#grad)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="42" y1="56" x2="52" y2="56" stroke="url(#grad)" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Home button -->
+  <circle cx="50" cy="72" r="3" fill="#667eea" opacity="0.4"/>
+</svg>

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EchoText Demo - Live Transskription</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --success: #10b981;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            color: white;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: white;
+            border-radius: 1.5rem;
+            padding: 2rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            color: var(--gray-900);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--gray-700);
+            font-size: 1rem;
+        }
+
+        .instructions {
+            background: var(--gray-50);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .instructions h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            color: var(--gray-900);
+        }
+
+        .step {
+            display: flex;
+            align-items: start;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .step:last-child {
+            margin-bottom: 0;
+        }
+
+        .step-number {
+            width: 2rem;
+            height: 2rem;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .phone-number {
+            background: white;
+            border: 2px solid var(--primary);
+            padding: 1rem;
+            border-radius: 0.75rem;
+            margin: 1.5rem 0;
+            text-align: center;
+        }
+
+        .phone-number-label {
+            font-size: 0.875rem;
+            color: var(--gray-700);
+            margin-bottom: 0.5rem;
+        }
+
+        .phone-number-value {
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: var(--primary);
+            letter-spacing: 0.05em;
+        }
+
+        .status {
+            background: #dcfce7;
+            border: 2px solid var(--success);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .status-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            color: #166534;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-text {
+            color: #166534;
+            font-size: 0.875rem;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .warning-header {
+            font-weight: 600;
+            color: #856404;
+            margin-bottom: 0.5rem;
+        }
+
+        .warning-text {
+            color: #856404;
+            font-size: 0.875rem;
+        }
+
+        .transcript-area {
+            background: white;
+            border: 2px solid var(--gray-200);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+        }
+
+        .transcript-placeholder {
+            color: var(--gray-700);
+            text-align: center;
+            padding: 3rem 1rem;
+        }
+
+        .links {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-outline {
+            background: white;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+
+        .btn-outline:hover {
+            background: var(--gray-50);
+        }
+
+        @media (max-width: 640px) {
+            .phone-number-value {
+                font-size: 1.25rem;
+            }
+
+            .links {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">EchoText</div>
+            <div class="subtitle">Live transskription af telefonopkald</div>
+        </div>
+
+        <div class="status">
+            <div class="status-header">
+                ✅ Demo er live!
+            </div>
+            <div class="status-text">
+                Live transskription virker. Text-to-Speech er under udvikling.
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h2>📞 Sådan tester du</h2>
+
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <strong>Ring til nummeret nedenfor</strong>
+                    <div class="phone-number">
+                        <div class="phone-number-label">Test-nummer</div>
+                        <div class="phone-number-value">+45 52 51 36 34</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <strong>Start med at tale dansk</strong><br>
+                    Sig for eksempel: "Hej, dette er en test af EchoText systemet"
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <strong>Se transskriptionen herunder</strong><br>
+                    Dine ord vil blive transskriberet live i realtid
+                </div>
+            </div>
+        </div>
+
+        <h3 style="margin-bottom: 0.75rem; font-size: 1rem;">Live transskription</h3>
+        <div class="transcript-area" id="transcript">
+            <div class="transcript-placeholder">
+                Venter på opkald...<br>
+                <small style="color: var(--gray-700); margin-top: 0.5rem; display: block;">
+                    Ring til +45 52 51 36 34 for at se transskription
+                </small>
+            </div>
+        </div>
+
+        <div class="warning">
+            <div class="warning-header">⚠️ Bemærk</div>
+            <div class="warning-text">
+                Dette er en demo af v1.0. Text-to-Speech (svar-funktionen) er endnu ikke implementeret.
+                Du kan se live transskription, men kan ikke svare endnu.
+            </div>
+        </div>
+
+        <div class="links">
+            <a href="https://github.com/astyltsvig/echotext" class="btn btn-primary">Se koden på GitHub</a>
+            <a href="https://github.com/astyltsvig/echotext/blob/main/SETUP.md" class="btn btn-outline">Opsætningsguide</a>
+        </div>
+    </div>
+
+    <script>
+        // WebSocket connection will be added here
+        // For now, just a placeholder
+        console.log('EchoText Demo v1.0');
+    </script>
+</body>
+</html>

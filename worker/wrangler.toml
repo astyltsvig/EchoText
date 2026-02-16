@@ -1,0 +1,17 @@
+name = "echotext"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# Durable Objects bindings
+[[durable_objects.bindings]]
+name = "CALL_SESSION"
+class_name = "CallSession"
+
+# Durable Objects migrations (SQLite-based for free plan)
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["CallSession"]
+
+# Environment variables (secrets set via wrangler secret)
+# DEEPGRAM_API_KEY - set via: wrangler secret put DEEPGRAM_API_KEY
+# GOOGLE_TTS_API_KEY - set via: wrangler secret put GOOGLE_TTS_API_KEY

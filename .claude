@@ -1,0 +1,42 @@
+# EchoText - Live transskription til telefonopkald
+
+Dette er et projekt der giver døve mulighed for at modtage telefonopkald via live transskription og svare via tekst-til-tale.
+
+## Projekttype
+PoC (Proof of Concept) - validering af teknologi til danske telefonopkald
+
+## Teknologi
+- **Backend**: Cloudflare Workers + Durable Objects (TypeScript)
+- **Telefoni**: Twilio (WebSocket media streams)
+- **Speech-to-Text**: Deepgram Nova-2 (dansk)
+- **Text-to-Speech**: Google Cloud TTS Wavenet (dansk)
+- **Frontend**: Simpel HTML/JS
+
+## Sprog
+- Primært dansk
+- Kode og kommentarer på engelsk
+- Dokumentation på dansk
+
+## Projektstruktur
+- `/worker/` - Cloudflare Worker (backend)
+- `/web/` - Frontend (simpel HTML)
+- `/.claude_docs/` - Detaljeret projektdokumentation
+
+## Nuværende fokus
+Vi er i gang med at implementere v1.0 PoC med følgende mål:
+1. Modtage indgående opkald via Twilio
+2. Streaming transskription via Deepgram
+3. Tekst-til-tale svar via Google TTS
+4. Simpel browser interface
+
+## Vigtige noter
+- Dette er single-user PoC (multi-user kommer i v3.0)
+- Ingen persistent lagring endnu (kommer i v2.1)
+- Fokus på at validere transskriptions- og TTS-kvalitet
+- Mållatency: Under 2 sekunder
+
+## API Keys (via Cloudflare secrets)
+- DEEPGRAM_API_KEY
+- GOOGLE_TTS_API_KEY
+
+Se `.claude_docs/setup.md` for komplet opsætningsguide.

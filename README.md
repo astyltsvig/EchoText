@@ -12,6 +12,12 @@ Du søger job og venter på svar. Rekruttereren ringer fra et ukendt nummer. Med
 - Svare professionelt via tekst-til-tale
 - Aldrig misse en vigtig jobmulighed igen
 
+## Vigtige noter
+- Dette er single-user PoC (multi-user kommer i v3.0)
+- Ingen persistent lagring endnu (kommer i v2.1)
+- Fokus på at validere transskriptions- og TTS-kvalitet
+- Mållatency: Under 2 sekunder
+
 ### Læge og sundhed
 Hospitalet ringer med prøvesvar eller aftaler. I stedet for at bede om SMS:
 - Modtag opkaldet direkte
@@ -134,59 +140,47 @@ echotext/
 | `/media-stream/:sessionId` | WebSocket | Twilio audio stream |
 | `/client/:sessionId` | WebSocket | Browser forbindelse |
 
-## Opsætning
+## Kom i gang
 
-### 1. Opret konti og få API keys
+Vælg den guide der passer til dig:
 
-**Deepgram** (speech-to-text)
-- Opret konto: https://deepgram.com
-- Opret API key
-- $200 gratis credits ved signup
+### 🚀 QuickStart (5 minutter)
+Bare kom i gang så hurtigt som muligt.
 
-**Google Cloud** (text-to-speech)
-- Opret projekt: https://console.cloud.google.com
-- Aktiver "Cloud Text-to-Speech API"
-- Opret API key
+➡️ **[QUICKSTART.md](QUICKSTART.md)** - Minimal opsætning uden forklaring
 
-**Twilio** (telefoni)
-- Opret konto: https://www.twilio.com
-- Køb dansk nummer (+45)
-- Noter Account SID og Auth Token
+### 📖 Detaljeret Setup (30 minutter)
+Komplet trin-for-trin guide med screenshots og troubleshooting.
 
-**Cloudflare** (hosting)
-- Opret konto: https://dash.cloudflare.com
-- Installer Wrangler: `npm install -g wrangler`
-- Login: `wrangler login`
+➡️ **[SETUP.md](SETUP.md)** - Fuld vejledning til første gang
 
-### 2. Konfigurer secrets
+### ⚡ Hurtig oversigt
 
 ```bash
-cd worker
-wrangler secret put DEEPGRAM_API_KEY
-wrangler secret put GOOGLE_TTS_API_KEY
-```
-
-### 3. Deploy worker
-
-```bash
+# 1. Installer dependencies
 cd worker
 npm install
+
+# 2. Konfigurer API keys (kræver konti)
+wrangler secret put DEEPGRAM_API_KEY
+wrangler secret put GOOGLE_TTS_API_KEY
+
+# 3. Deploy
 wrangler deploy
+
+# 4. Konfigurer Twilio webhook med din worker URL
 ```
 
-### 4. Konfigurer Twilio webhook
+### Nødvendige konti
 
-1. Gå til Twilio Console → Phone Numbers → Dit nummer
-2. Under "Voice & Fax" → "A call comes in":
-   - Webhook URL: `https://echotext.<din-subdomain>.workers.dev/incoming-call`
-   - HTTP Method: POST
+| Service | Formål | Pris | Link |
+|---------|--------|------|------|
+| Cloudflare | Hosting | ✅ Gratis | [Opret konto](https://dash.cloudflare.com) |
+| Deepgram | Speech-to-text | 💰 $200 gratis | [Opret konto](https://deepgram.com) |
+| Google Cloud | Text-to-speech | 💰 $300 gratis første år | [Opret konto](https://console.cloud.google.com) |
+| Twilio | Telefoni | 💳 ~$16/md | [Opret konto](https://www.twilio.com) |
 
-### 5. Test
-
-1. Åbn `https://echotext.<din-subdomain>.workers.dev/` i browser
-2. Ring til dit Twilio nummer
-3. Se transskription i browseren
-4. Skriv svar og send
+> ⚠️ **Vigtigt:** Twilio kræver konto-opgradering for danske numre - se [SETUP.md](SETUP.md#42-aktiver-din-konto-️)
 
 ## Prisestimat (PoC)
 
@@ -213,8 +207,9 @@ Baseret på ~10 opkald á 5 minutter per måned:
 **Mål:** Validere at teknologien virker til danske telefonopkald.
 
 - [x] Deepgram dansk transskription test
-- [ ] Cloudflare Worker med Durable Object
-- [ ] Twilio Media Streams integration
+- [x] Cloudflare Worker med Durable Object
+- [x] Twilio Media Streams integration
+- [x] Live STT (bekræftet funktionel!)
 - [ ] Google TTS integration
 - [ ] Simpel webside til transskription
 

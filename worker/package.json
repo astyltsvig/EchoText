@@ -1,0 +1,21 @@
+{
+  "name": "echotext-worker",
+  "version": "1.0.0",
+  "description": "EchoText Cloudflare Worker for live phone call transcription",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "keywords": ["twilio", "deepgram", "transcription", "cloudflare"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "typescript": "^5.7.2",
+    "wrangler": "^3.95.0"
+  },
+  "dependencies": {
+    "@deepgram/sdk": "^3.12.0"
+  }
+}
