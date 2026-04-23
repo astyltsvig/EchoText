@@ -1,6 +1,6 @@
 ---
-const title = "EchoText - Telefonopkald for døve";
-const description = "Live transskription af telefonopkald med mulighed for at svare via tekst-til-tale. Dit danske alternativ til Nagish.";
+const title = "EchoText - Telefonopkald for døve og hørehæmmede";
+const description = "Live transskription af telefonopkald med mulighed for at svare via tekst-til-tale. Dansk alternativ til Nagish.";
 ---
 
 <!DOCTYPE html>
@@ -25,7 +25,6 @@ const description = "Live transskription af telefonopkald med mulighed for at sv
                     <a href="#baggrund">Baggrund</a>
                     <a href="#hvordan">Hvordan</a>
                     <a href="#roadmap">Roadmap</a>
-                    <a href="https://github.com/dit-brugernavn/echotext" class="btn-secondary">GitHub</a>
                 </div>
             </div>
         </nav>
@@ -39,8 +38,8 @@ const description = "Live transskription af telefonopkald med mulighed for at sv
                     Fordi vigtige opkald fra rekrutterere, læger og banker ikke skal gå tabt.
                 </p>
                 <div class="hero-cta">
-                    <a href="https://echotext.astyltsvig.workers.dev" class="btn-primary">Prøv demo</a>
-                    <a href="#hvordan" class="btn-outline">Hvordan virker det?</a>
+                    <a href="#hvordan" class="btn-primary">Prøv demo</a>
+                    <a href="#baggrund" class="btn-outline">Læs mere</a>
                 </div>
             </div>
 
@@ -52,7 +51,7 @@ const description = "Live transskription af telefonopkald med mulighed for at sv
                     </div>
                     <div class="phone-content">
                         <div class="call-info">
-                            <div class="caller-name">+45 XX XX XX XX</div>
+                            <div class="caller-name">Charlotte, Novo Nordisk</div>
                             <div class="call-status">🔴 Live opkald</div>
                         </div>
 
@@ -64,8 +63,8 @@ const description = "Live transskription af telefonopkald med mulighed for at sv
                         </div>
 
                         <div class="reply-area">
-                            <input type="text" placeholder="Svar kommer snart..." disabled />
-                            <button class="send-btn" disabled>Send →</button>
+                            <input type="text" placeholder="Skriv dit svar..." />
+                            <button class="send-btn">Send →</button>
                         </div>
                     </div>
                 </div>
@@ -85,33 +84,25 @@ const description = "Live transskription af telefonopkald med mulighed for at sv
                 <div class="background-text">
                     <h3>Problemet</h3>
                     <p>
-                        <strong><a href="https://www.nagish.com/" target="_blank" rel="noopener">Nagish</a></strong> er en amerikansk service og brilliant app der gør telefonopkald tilgængelige for døve gennem live transskription og tekst-til-tale.
-                        Men den understøtter kun amerikanske og israelske telefonnumre - ikke danske.
+                        <strong><a href="https://www.nagish.com/" target="_blank" rel="noopener">Nagish</a></strong> er en fantastisk amerikansk app, der gør telefonopkald tilgængelige for døve og hørehæmmede gennem live transskription og tekst-til-tale.
+                        Men den understøtter kun amerikanske og israelske telefonnumre — ikke danske.
                     </p>
                     <p>
-                        Det betyder at døve i Danmark stadig misser vigtige opkald fra rekrutterere, læger, banker og håndværkere.
+                        Det betyder at døve og hørehæmmede i Danmark stadig misser vigtige opkald fra rekrutterere, læger, banker og håndværkere.
                         Eller er afhængige af SMS, hjælp fra andre, eller langsom ping-pong kommunikation.
                     </p>
 
                     <h3>Løsningen</h3>
                     <p>
-                        EchoText gør det samme som Nagish - men for danske telefonnumre. Med moderne AI-teknologi:
+                        EchoText gør det samme som Nagish — men for danske telefonnumre. Med moderne AI-teknologi:
                     </p>
                     <ul>
-                        <li><strong>Deepgram Nova-2</strong> - dansk speech-to-text i realtid</li>
-                        <li><strong>Google Cloud TTS</strong> - naturlig dansk text-to-speech</li>
-                        <li><strong>Twilio</strong> - pålidelig telefoni-infrastruktur</li>
-                        <li><strong>Cloudflare Workers</strong> - hurtig, global hosting</li>
+                        <li><strong>Deepgram Nova-2</strong> — dansk speech-to-text i realtid</li>
+                        <li><strong>Google Cloud TTS</strong> — naturlig dansk text-to-speech</li>
+                        <li><strong>Twilio</strong> — pålidelig telefoni-infrastruktur</li>
+                        <li><strong>Cloudflare Workers</strong> — hurtig, global hosting</li>
                     </ul>
-
-                    <h3>Hvordan det fungerer</h3>
-                    <p>Når nogen ringer til dit EchoText nummer:</p>
-                    <ol>
-                        <li>Du ser live transskription af hvad de siger på din telefon</li>
-                        <li>Du skriver dit svar som tekst</li>
-                        <li>De hører dit svar oplæst med naturlig dansk stemme</li>
-                    </ol>
-                    <p>Alt sammen med under 2 sekunders forsinkelse.</p>
+                    <p>Alt sammen med under 2 sekunders forsinkelse. Se hvordan det virker i <a href="#hvordan">live-demoen nedenfor</a>.</p>
                 </div>
 
                 <div class="status-box">
@@ -126,7 +117,7 @@ const description = "Live transskription af telefonopkald med mulighed for at sv
                     </div>
                     <div class="status-item">
                         <span class="status-label">Text-to-Speech</span>
-                        <span class="status-value">🔄 Under udvikling</span>
+                        <span class="status-value">✅ Virker</span>
                     </div>
                     <div class="status-item">
                         <span class="status-label">Open Source</span>
@@ -135,7 +126,7 @@ const description = "Live transskription af telefonopkald med mulighed for at sv
 
                     <div class="warning-box">
                         <strong>🚧 Under aktiv udvikling</strong>
-                        <p>Projektet er tidligt i udviklingen. Selvhost din egen instans.</p>
+                        <p>Projektet er i early access — forvent løbende forbedringer.</p>
                     </div>
                 </div>
             </div>
@@ -314,10 +305,10 @@ const description = "Live transskription af telefonopkald med mulighed for at sv
                         <li>✅ Cloudflare Worker backend</li>
                         <li>✅ Twilio telefoni-integration</li>
                         <li>✅ Indgående opkald virker</li>
-                        <li>🔄 Text-to-speech svar (Google TTS)</li>
+                        <li>✅ Text-to-speech svar (Google Wavenet)</li>
                         <li>🔄 Web interface forbedringer</li>
                     </ul>
-                    <p class="phase-success"><strong>Status:</strong> Live transskription fungerer rigtig godt!</p>
+                    <p class="phase-success"><strong>Status:</strong> Stabil kernefunktionalitet under normale opkaldsforhold.</p>
                 </div>
 
                 <div class="roadmap-phase">
@@ -373,7 +364,7 @@ const description = "Live transskription af telefonopkald med mulighed for at sv
                     <div class="phase-header">
                         <h3>v3.0 - Multi-user Platform</h3>
                     </div>
-                    <p class="phase-goal"><strong>Mål:</strong> Andre døve kan bruge EchoText</p>
+                    <p class="phase-goal"><strong>Mål:</strong> Andre døve og hørehæmmede kan bruge EchoText</p>
                     <ul class="phase-tasks">
                         <li>Brugeroprettelse og login</li>
                         <li>Eget nummer per bruger</li>
@@ -405,8 +396,7 @@ const description = "Live transskription af telefonopkald med mulighed for at sv
                 <h2>Prøv det selv</h2>
                 <p>Live demo. Open source. Gratis at selvhoste.</p>
                 <div class="cta-buttons">
-                    <a href="https://echotext.astyltsvig.workers.dev" class="btn-primary btn-large">Prøv demo</a>
-                    <a href="https://github.com/dit-brugernavn/echotext/blob/main/SETUP.md" class="btn-outline-light">Opsætningsguide</a>
+                    <a href="#hvordan" class="btn-primary btn-large">Prøv demo</a>
                 </div>
                 <p class="cta-note">💡 Ring til +45 52 51 36 34 og se live transskription!</p>
             </div>
@@ -429,16 +419,9 @@ const description = "Live transskription af telefonopkald med mulighed for at sv
                         <a href="#roadmap">Roadmap</a>
                     </div>
                     <div class="footer-column">
-                        <h4>Resources</h4>
-                        <a href="https://github.com/dit-brugernavn/echotext">GitHub</a>
-                        <a href="https://github.com/dit-brugernavn/echotext/blob/main/README.md">Dokumentation</a>
-                        <a href="https://github.com/dit-brugernavn/echotext/blob/main/SETUP.md">Setup Guide</a>
-                    </div>
-                    <div class="footer-column">
                         <h4>Legal</h4>
-                        <a href="#">Privatlivspolitik</a>
-                        <a href="#">Vilkår</a>
-                        <a href="https://github.com/dit-brugernavn/echotext/blob/main/LICENSE">MIT Licens</a>
+                        <span class="footer-muted">Privatlivspolitik — kommer snart</span>
+                        <span class="footer-muted">Vilkår — kommer snart</span>
                     </div>
                 </div>
             </div>
@@ -1384,7 +1367,7 @@ const description = "Live transskription af telefonopkald med mulighed for at sv
 
     .footer-links {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(2, 1fr);
         gap: 2rem;
     }
 
@@ -1404,6 +1387,14 @@ const description = "Live transskription af telefonopkald med mulighed for at sv
 
     .footer-column a:hover {
         color: white;
+    }
+
+    .footer-muted {
+        display: block;
+        color: var(--gray-300);
+        margin-bottom: 0.75rem;
+        opacity: 0.6;
+        font-size: 0.9rem;
     }
 
     .footer-bottom {
