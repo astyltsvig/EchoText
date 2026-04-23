@@ -856,7 +856,7 @@ function getHTML(): string {
   <div class="container">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
       <h1 style="margin-bottom: 0;">EchoText - Live Transskription</h1>
-      <a href="https://echotext.dk" target="_blank" style="color: #667eea; text-decoration: none; font-weight: 600; font-size: 14px; padding: 8px 16px; border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 8px; transition: all 0.2s;">Læs mere om EchoText &rarr;</a>
+      <a href="https://echotext-landing.pages.dev/" target="_blank" style="color: #667eea; text-decoration: none; font-weight: 600; font-size: 14px; padding: 8px 16px; border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 8px; transition: all 0.2s;">Læs mere om EchoText &rarr;</a>
     </div>
 
     <div style="background: rgba(255, 193, 7, 0.15); border: 2px solid #ffc107; border-radius: 12px; padding: 16px; margin-bottom: 24px;">
