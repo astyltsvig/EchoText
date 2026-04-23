@@ -707,12 +707,14 @@ function getHTML(): string {
     }
     .transcript-line {
       margin-bottom: 10px;
-      padding: 12px;
+      padding: 16px 18px;
       background: #333;
       border-radius: 6px;
       border-left: 3px solid transparent;
       transition: all 0.3s ease;
       animation: slideIn 0.3s ease;
+      font-size: 20px;
+      line-height: 1.5;
     }
     @keyframes slideIn {
       from {
@@ -850,31 +852,161 @@ function getHTML(): string {
       transform: scale(1.05);
       box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
     }
+
+    /* Demo badge in header */
+    .demo-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      background: rgba(102, 126, 234, 0.18);
+      border: 1px solid rgba(102, 126, 234, 0.5);
+      color: #a5b4fc;
+      border-radius: 999px;
+      vertical-align: middle;
+      margin-left: 12px;
+      -webkit-text-fill-color: #a5b4fc;
+    }
+
+    /* Slim info card (replaces big yellow warning) */
+    .info-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 24px;
+      font-size: 14px;
+      color: #aab;
+      line-height: 1.6;
+    }
+    .info-card strong {
+      color: #60a5fa;
+      font-weight: 600;
+    }
+
+    /* Quick-reply chips */
+    .quick-replies {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+      opacity: 0.4;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .quick-replies.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .quick-replies-label {
+      width: 100%;
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 600;
+    }
+    .quick-reply-chip {
+      padding: 10px 18px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #fff;
+      border-radius: 999px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .quick-reply-chip:hover {
+      background: rgba(102, 126, 234, 0.25);
+      border-color: rgba(102, 126, 234, 0.6);
+      transform: translateY(-1px);
+    }
+    .quick-reply-chip:active {
+      transform: translateY(0);
+    }
+
+    /* Presenter panel (kun synlig med ?presenter i URL) */
+    .presenter-panel {
+      display: none;
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 320px;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      background: rgba(15, 15, 30, 0.95);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(102, 126, 234, 0.4);
+      border-radius: 14px;
+      padding: 20px 20px 16px 20px;
+      font-size: 13px;
+      box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+    }
+    .presenter-panel.visible {
+      display: block;
+    }
+    .presenter-panel h3 {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #a5b4fc;
+      margin-bottom: 14px;
+    }
+    .presenter-panel .script-section {
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .presenter-panel .script-section:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+    .presenter-panel .script-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #888;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    .presenter-panel .script-line {
+      color: #eee;
+      line-height: 1.5;
+      margin-bottom: 4px;
+    }
+    .presenter-panel .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 20px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+    .presenter-panel .close-btn:hover {
+      color: #fff;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
-      <h1 style="margin-bottom: 0;">EchoText - Live Transskription</h1>
-      <a href="https://echotext-landing.pages.dev/" target="_blank" style="color: #667eea; text-decoration: none; font-weight: 600; font-size: 14px; padding: 8px 16px; border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 8px; transition: all 0.2s;">Læs mere om EchoText &rarr;</a>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h1 style="margin-bottom: 0;">EchoText<span class="demo-badge">DEMO v1.0</span></h1>
+      <a href="https://echotext-landing.pages.dev/" target="_blank" style="color: #667eea; text-decoration: none; font-weight: 600; font-size: 14px; padding: 8px 16px; border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 8px; transition: all 0.2s;">Læs mere &rarr;</a>
     </div>
 
-    <div style="background: rgba(255, 193, 7, 0.15); border: 2px solid #ffc107; border-radius: 12px; padding: 16px; margin-bottom: 24px;">
-      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-        <span style="font-size: 24px;">⚠️</span>
-        <strong style="color: #ffc107; font-size: 18px;">Under udvikling</strong>
-      </div>
-      <p style="color: #ffc107; margin-bottom: 12px; line-height: 1.5;">
-        Denne app er stadig under udvikling. Live transskription og tekst-til-tale svar virker - prøv det!
-      </p>
-      <div style="background: rgba(0, 0, 0, 0.2); padding: 12px; border-radius: 8px; margin-top: 12px;">
-        <p style="color: #fff; font-size: 14px; margin-bottom: 8px;"><strong>📞 Sådan tester du:</strong></p>
-        <ol style="color: #fff; font-size: 14px; line-height: 1.8; padding-left: 20px;">
-          <li>Hold denne side åben i din browser</li>
-          <li>Ring til <strong style="color: #60a5fa;">+45 52 51 36 34</strong> fra din telefon</li>
-          <li>Begynd at snakke og se live transskription herunder</li>
-        </ol>
-      </div>
+    <div class="info-card">
+      Ring til <strong>+45 52 51 36 34</strong> for at teste live transskription og tekst-til-tale. Hold denne side åben under opkaldet.
     </div>
 
     <div class="status" id="status">
@@ -900,6 +1032,16 @@ function getHTML(): string {
       <p style="color: #888;">Transskription vises her når opkaldet starter...</p>
     </div>
 
+    <div class="quick-replies" id="quickReplies">
+      <div class="quick-replies-label">Hurtigsvar — klik for at læse op for opkalder</div>
+      <button type="button" class="quick-reply-chip" data-reply="Ja tak.">Ja tak</button>
+      <button type="button" class="quick-reply-chip" data-reply="Nej tak.">Nej tak</button>
+      <button type="button" class="quick-reply-chip" data-reply="Kan du gentage det?">Kan du gentage?</button>
+      <button type="button" class="quick-reply-chip" data-reply="Lige et øjeblik, jeg skriver et svar.">Et øjeblik</button>
+      <button type="button" class="quick-reply-chip" data-reply="Kan du ringe tilbage om lidt?">Ring tilbage senere</button>
+      <button type="button" class="quick-reply-chip" data-reply="Vil du sende det på SMS eller mail i stedet?">Send SMS/mail i stedet</button>
+    </div>
+
     <form class="response-form" id="responseForm">
       <input
         type="text"
@@ -911,6 +1053,39 @@ function getHTML(): string {
       <button type="submit" id="sendBtn" disabled style="opacity: 0.5;">Send</button>
     </form>
   </div>
+
+  <aside class="presenter-panel" id="presenterPanel">
+    <button class="close-btn" type="button" id="presenterClose" aria-label="Luk">&times;</button>
+    <h3>Præsentations-script</h3>
+
+    <div class="script-section">
+      <div class="script-title">Åbning (sig når opkald tages)</div>
+      <div class="script-line">"Hej, det er Kasper fra Jobcenter Aarhus."</div>
+      <div class="script-line">"Jeg ringer angående din ansøgning."</div>
+    </div>
+
+    <div class="script-section">
+      <div class="script-title">Tal &amp; navne (vis nøjagtighed)</div>
+      <div class="script-line">"Mit telefonnummer er 28 45 17 93."</div>
+      <div class="script-line">"Adressen er Jagtvej 172, 2100 København Ø."</div>
+      <div class="script-line">"Sagsbehandleren hedder Mette Sørensen."</div>
+    </div>
+
+    <div class="script-section">
+      <div class="script-title">Fagsprog (læge-scenarie)</div>
+      <div class="script-line">"Dine blodprøver viser forhøjet kolesterol."</div>
+      <div class="script-line">"Vi skal bestille ny tid på tirsdag klokken 14."</div>
+    </div>
+
+    <div class="script-section">
+      <div class="script-title">Talking points til Anne &amp; Claus</div>
+      <div class="script-line">• Dansk Nova-2 — Nagish gør det ikke på dansk</div>
+      <div class="script-line">• Under 2 sek. latency</div>
+      <div class="script-line">• Twilio-nummer i dag, eget nummer i v2</div>
+      <div class="script-line">• 4.000 døve + 800.000 hørehæmmede</div>
+      <div class="script-line">• § 112 hjælpemiddel-spor?</div>
+    </div>
+  </aside>
 
   <script>
     let ws = null;
@@ -977,6 +1152,7 @@ function getHTML(): string {
               document.getElementById('responseInput').placeholder = 'Skriv dit svar her...';
               document.getElementById('sendBtn').disabled = false;
               document.getElementById('sendBtn').style.opacity = '1';
+              document.getElementById('quickReplies').classList.add('active');
               // Remove "waiting" message if present
               {
                 const waitingMsg = document.getElementById('transcription').querySelector('p[style]');
@@ -992,6 +1168,7 @@ function getHTML(): string {
               document.getElementById('responseInput').placeholder = 'Venter på opkald...';
               document.getElementById('sendBtn').disabled = true;
               document.getElementById('sendBtn').style.opacity = '0.5';
+              document.getElementById('quickReplies').classList.remove('active');
               break;
 
             case 'call-timeout':
@@ -1213,27 +1390,40 @@ function getHTML(): string {
       }
     });
 
+    function sendReply(text) {
+      if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: 'user-response', text: text }));
+
+      const transcriptionBox = document.getElementById('transcription');
+      const userLine = document.createElement('div');
+      userLine.className = 'transcript-line user-response';
+      userLine.textContent = '💬 Du: ' + text;
+      transcriptionBox.appendChild(userLine);
+      transcriptionBox.scrollTop = transcriptionBox.scrollHeight;
+    }
+
     document.getElementById('responseForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const input = document.getElementById('responseInput');
       const text = input.value.trim();
-
-      if (text && ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-          type: 'user-response',
-          text: text
-        }));
-
-        // Add user's response to transcription
-        const transcriptionBox = document.getElementById('transcription');
-        const userLine = document.createElement('div');
-        userLine.className = 'transcript-line user-response';
-        userLine.textContent = '💬 Du: ' + text;
-        transcriptionBox.appendChild(userLine);
-        transcriptionBox.scrollTop = transcriptionBox.scrollHeight;
-
+      if (text) {
+        sendReply(text);
         input.value = '';
       }
+    });
+
+    document.querySelectorAll('.quick-reply-chip').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        sendReply(chip.dataset.reply);
+      });
+    });
+
+    // Presenter panel toggle (vis med ?presenter i URL)
+    if (new URLSearchParams(window.location.search).has('presenter')) {
+      document.getElementById('presenterPanel').classList.add('visible');
+    }
+    document.getElementById('presenterClose').addEventListener('click', () => {
+      document.getElementById('presenterPanel').classList.remove('visible');
     });
 
     // Connect on page load
