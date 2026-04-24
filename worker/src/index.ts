@@ -69,7 +69,7 @@ async function handleIncomingCall(request: Request, env: Env): Promise<Response>
 
   const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say language="da-DK" voice="Google.da-DK-Wavenet-F">Velkommen til EchoText. Dette er en eksperimentel service der bruger kunstig intelligens til at omdanne tale til tekst, så døve og hørehæmmede kan føre telefonsamtaler. Din samtale bliver transskriberet i realtid. Vent venligst mens opkaldet besvares.</Say>
+  <Say language="da-DK" voice="Google.da-DK-Neural2-F">Velkommen til Smartlinjen. Din samtale bliver transskriberet i realtid, så modtageren kan læse med. Vent venligst mens opkaldet besvares.</Say>
   <Connect>
     <Stream url="${wsUrl}" track="inbound_track" />
   </Connect>
@@ -490,7 +490,7 @@ export class CallSession {
             input: { text },
             voice: {
               languageCode: 'da-DK',
-              name: 'da-DK-Wavenet-F',  // Danish female Wavenet voice (matches Twilio Say voice)
+              name: 'da-DK-Neural2-F',
               ssmlGender: 'FEMALE',
             },
             audioConfig: {
@@ -596,7 +596,7 @@ function getHTML(): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EchoText - Live Transskription</title>
+  <title>Smartlinjen</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%23667eea;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%23764ba2;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='48' fill='url(%23grad)'/%3E%3Cpath d='M35 25 C35 22 37 20 40 20 L60 20 C63 20 65 22 65 25 L65 75 C65 78 63 80 60 80 L40 80 C37 80 35 78 35 75 Z' fill='white' opacity='0.95'/%3E%3Crect x='38' y='28' width='24' height='36' rx='1' fill='url(%23grad)' opacity='0.3'/%3E%3Cline x1='42' y1='35' x2='56' y2='35' stroke='url(%23grad)' stroke-width='2' stroke-linecap='round'/%3E%3Cline x1='42' y1='42' x2='54' y2='42' stroke='url(%23grad)' stroke-width='2' stroke-linecap='round'/%3E%3Cline x1='42' y1='49' x2='58' y2='49' stroke='url(%23grad)' stroke-width='2' stroke-linecap='round'/%3E%3Cline x1='42' y1='56' x2='52' y2='56' stroke='url(%23grad)' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='50' cy='72' r='3' fill='%23667eea' opacity='0.4'/%3E%3C/svg%3E">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1001,8 +1001,7 @@ function getHTML(): string {
 <body>
   <div class="container">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-      <h1 style="margin-bottom: 0;">EchoText<span class="demo-badge">DEMO v1.0</span></h1>
-      <a href="https://echotext-landing.pages.dev/" target="_blank" style="color: #667eea; text-decoration: none; font-weight: 600; font-size: 14px; padding: 8px 16px; border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 8px; transition: all 0.2s;">Læs mere &rarr;</a>
+      <h1 style="margin-bottom: 0;">Smartlinjen<span class="demo-badge">DEMO</span></h1>
     </div>
 
     <div class="info-card">
@@ -1112,7 +1111,7 @@ function getHTML(): string {
       }
 
       ws.onopen = () => {
-        console.log('[CLIENT] Connected to EchoText');
+        console.log('[CLIENT] Connected to Smartlinjen');
         reconnectAttempts = 0; // Reset on successful connection
         updateStatus('Forbundet - venter på opkald', 'connected');
 
