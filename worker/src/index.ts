@@ -69,7 +69,7 @@ async function handleIncomingCall(request: Request, env: Env): Promise<Response>
 
   const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say language="da-DK" voice="Google.da-DK-Neural2-F">Velkommen til Smartlinjen. Din samtale bliver transskriberet i realtid, så modtageren kan læse med. Vent venligst mens opkaldet besvares.</Say>
+  <Say language="da-DK" voice="Google.da-DK-Wavenet-F">Velkommen til Smartlinjen. Din samtale bliver transskriberet i realtid, så modtageren kan læse med. Vent venligst mens opkaldet besvares.</Say>
   <Connect>
     <Stream url="${wsUrl}" track="inbound_track" />
   </Connect>
