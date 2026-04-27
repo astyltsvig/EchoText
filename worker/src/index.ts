@@ -10,6 +10,47 @@ export interface Env {
   GOOGLE_TTS_API_KEY: string;
 }
 
+// G.711 µ-law encoder (16-bit signed PCM → 8-bit mulaw)
+function linearToMulaw(sample: number): number {
+  const BIAS = 0x84;
+  const CLIP = 32635;
+  let sign = 0;
+  if (sample < 0) {
+    sample = -sample;
+    sign = 0x80;
+  }
+  if (sample > CLIP) sample = CLIP;
+  sample += BIAS;
+  let exponent = 7;
+  let expMask = 0x4000;
+  while ((sample & expMask) === 0 && exponent > 0) {
+    exponent--;
+    expMask >>= 1;
+  }
+  const mantissa = (sample >> (exponent + 3)) & 0x0F;
+  return ~(sign | (exponent << 4) | mantissa) & 0xFF;
+}
+
+// Generates a short typewriter-style click as base64 mulaw (8kHz, ~40ms)
+// so the caller can hear that the user is actively typing.
+function generateClickAudioBase64(): string {
+  const sampleRate = 8000;
+  const numSamples = 320; // 40ms
+  const bytes = new Uint8Array(numSamples);
+  for (let i = 0; i < numSamples; i++) {
+    const t = i / sampleRate;
+    const envelope = Math.exp(-t * 90);
+    const tone = Math.sin(2 * Math.PI * 1400 * t) * 0.55 + (Math.random() - 0.5) * 0.45;
+    const sample = Math.round(envelope * tone * 14000);
+    bytes[i] = linearToMulaw(sample);
+  }
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+const CLICK_AUDIO_BASE64 = generateClickAudioBase64();
+
 /**
  * Main Worker - routes requests to appropriate handlers
  */
@@ -69,7 +110,7 @@ async function handleIncomingCall(request: Request, env: Env): Promise<Response>
 
   const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say language="da-DK" voice="Google.da-DK-Wavenet-F">Velkommen til Smartlinjen. Din samtale bliver transskriberet i realtid, så modtageren kan læse med. Vent venligst mens opkaldet besvares.</Say>
+  <Say language="da-DK" voice="Google.da-DK-Wavenet-F">Velkommen til Smartlinjen. Vent venligst mens opkaldet besvares.</Say>
   <Connect>
     <Stream url="${wsUrl}" track="inbound_track" />
   </Connect>
@@ -124,6 +165,13 @@ export class CallSession {
   private streamSid: string = '';
   private callAccepted: boolean = false;
   private callTimeout: ReturnType<typeof setTimeout> | null = null;
+  private typingClickInterval: ReturnType<typeof setInterval> | null = null;
+  private callStartedAt: number = 0;
+  private audioPacketCount: number = 0;
+  private audioBytesToDeepgram: number = 0;
+  private finalTranscriptCount: number = 0;
+  private ttsRequestCount: number = 0;
+  private callerInfo: { from?: string; to?: string; callSid?: string } = {};
 
   constructor(state: DurableObjectState, env: Env) {
     this.state = state;
@@ -182,7 +230,20 @@ export class CallSession {
           case 'start':
             console.log('[TWILIO-WS] Stream started:', JSON.stringify(message.start));
             this.streamSid = message.streamSid || message.start?.streamSid || '';
+            this.callStartedAt = Date.now();
+            this.audioPacketCount = 0;
+            this.audioBytesToDeepgram = 0;
+            this.finalTranscriptCount = 0;
+            this.ttsRequestCount = 0;
+            this.callerInfo = {
+              from: message.start?.customParameters?.From || message.start?.callerName,
+              to: message.start?.customParameters?.To,
+              callSid: message.start?.callSid,
+            };
             console.log(`[TWILIO-WS] StreamSid: ${this.streamSid}`);
+            console.log(`[TWILIO-WS] CallSid: ${this.callerInfo.callSid || 'unknown'}`);
+            console.log(`[TWILIO-WS] Caller: ${this.callerInfo.from || 'unknown'} → ${this.callerInfo.to || 'unknown'}`);
+            console.log(`[TWILIO-WS] Media format: ${JSON.stringify(message.start?.mediaFormat)}`);
             this.twilioStreamStarted = true;
             this.callActive = true;
             this.callAccepted = false;
@@ -214,6 +275,13 @@ export class CallSession {
                 // Deepgram requires raw binary data, not JSON
                 const audioBuffer = Uint8Array.from(atob(message.media.payload), c => c.charCodeAt(0));
                 this.deepgramWs.send(audioBuffer);
+                this.audioPacketCount++;
+                this.audioBytesToDeepgram += audioBuffer.length;
+                // Log every 250 packets (~5s of audio at Twilio's 50Hz cadence)
+                if (this.audioPacketCount % 250 === 0) {
+                  const elapsedSec = ((Date.now() - this.callStartedAt) / 1000).toFixed(1);
+                  console.log(`[TWILIO-WS] Audio flowing: ${this.audioPacketCount} packets, ${(this.audioBytesToDeepgram / 1024).toFixed(1)} KB → Deepgram (${elapsedSec}s elapsed)`);
+                }
               } catch (err) {
                 console.error('[TWILIO-WS] Error decoding/sending audio:', err);
               }
@@ -301,8 +369,10 @@ export class CallSession {
               sessionId: this.sessionId
             }
           });
-          // Tell the caller they're connected
-          await this.synthesizeSpeech('Du er nu forbundet. Du kan begynde at tale.');
+          // Tell the caller they're connected — explain the format so they know what to expect
+          await this.synthesizeSpeech(
+            'Hej, og velkommen. Samtalen her bliver transskriberet, så jeg kan læse alt det du siger. Når jeg svarer dig skriftligt, vil du høre en let kliklyd mens jeg skriver — så ved du at jeg er i gang. Du må gerne begynde at tale.'
+          );
         } else if (message.type === 'call-reject') {
           console.log('[CLIENT-WS] Call rejected by user');
           this.notifyClient({ type: 'call-rejected' });
@@ -311,6 +381,10 @@ export class CallSession {
         } else if (message.type === 'user-response' && message.text) {
           console.log(`[CLIENT-WS] User response: ${message.text}`);
           await this.synthesizeSpeech(message.text);
+        } else if (message.type === 'typing-start') {
+          this.startTypingClicks();
+        } else if (message.type === 'typing-stop') {
+          this.stopTypingClicks();
         } else if (message.type === 'ping') {
           // Respond to ping with state info
           this.notifyClient({
@@ -409,7 +483,11 @@ export class CallSession {
                 const confidence = data.channel.alternatives[0].confidence || 0;
 
                 if (transcript.trim()) {
-                  console.log(`[DEEPGRAM] Transcript (${data.is_final ? 'FINAL' : 'interim'}):`, transcript, `(confidence: ${confidence.toFixed(2)})`);
+                  if (data.is_final) {
+                    this.finalTranscriptCount++;
+                  }
+                  const elapsed = this.callStartedAt ? `${((Date.now() - this.callStartedAt) / 1000).toFixed(1)}s` : '?';
+                  console.log(`[DEEPGRAM] [${elapsed}] ${data.is_final ? 'FINAL  ' : 'interim'} (${(confidence * 100).toFixed(0)}%): "${transcript}"`);
                   this.notifyClient({
                     type: 'transcription',
                     text: transcript,
@@ -470,8 +548,10 @@ export class CallSession {
    * Synthesizes speech from text using Google Cloud TTS and plays it to caller
    */
   async synthesizeSpeech(text: string): Promise<void> {
+    const ttsStart = Date.now();
     try {
-      console.log(`[TTS] Synthesizing speech with Google TTS: "${text}"`);
+      this.ttsRequestCount++;
+      console.log(`[TTS] Request #${this.ttsRequestCount} (${text.length} chars): "${text}"`);
 
       if (!this.twilioWs) {
         console.error('[TTS] No Twilio WebSocket connection');
@@ -501,7 +581,8 @@ export class CallSession {
         }
       );
 
-      console.log('[TTS] Google TTS response status:', response.status);
+      const ttsLatency = Date.now() - ttsStart;
+      console.log(`[TTS] Google TTS response status: ${response.status} (${ttsLatency}ms)`);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -517,7 +598,7 @@ export class CallSession {
       const data = await response.json() as { audioContent?: string };
 
       if (data.audioContent && this.twilioWs) {
-        console.log('[TTS] Sending audio to Twilio (length:', data.audioContent.length, ')');
+        console.log(`[TTS] Sending audio to Twilio (${(data.audioContent.length / 1024).toFixed(1)} KB base64, total round-trip ${Date.now() - ttsStart}ms)`);
 
         // Google TTS returns base64 encoded audio directly
         // Send it back to Twilio - streamSid is required
@@ -553,6 +634,37 @@ export class CallSession {
   }
 
   /**
+   * Starts sending a periodic click sound to the caller while the user is typing.
+   * Gives the caller an audible cue that a written reply is on its way.
+   */
+  startTypingClicks(): void {
+    if (this.typingClickInterval) return;
+    if (!this.callAccepted || !this.twilioWs || !this.streamSid) return;
+    console.log('[TYPING] Starting click sound');
+    this.sendClick();
+    this.typingClickInterval = setInterval(() => this.sendClick(), 600);
+  }
+
+  stopTypingClicks(): void {
+    if (this.typingClickInterval) {
+      console.log('[TYPING] Stopping click sound');
+      clearInterval(this.typingClickInterval);
+      this.typingClickInterval = null;
+    }
+  }
+
+  private sendClick(): void {
+    if (!this.twilioWs || !this.streamSid) return;
+    this.twilioWs.send(
+      JSON.stringify({
+        event: 'media',
+        streamSid: this.streamSid,
+        media: { payload: CLICK_AUDIO_BASE64 },
+      })
+    );
+  }
+
+  /**
    * Sends a message to the browser client
    */
   notifyClient(message: any): void {
@@ -565,7 +677,20 @@ export class CallSession {
    * Cleans up call-related connections (but keeps client WebSocket alive)
    */
   cleanup(): void {
-    console.log('[CLEANUP] Cleaning up call connections...');
+    if (this.callStartedAt) {
+      const durationSec = ((Date.now() - this.callStartedAt) / 1000).toFixed(1);
+      console.log('[CLEANUP] ─────── CALL SUMMARY ───────');
+      console.log(`[CLEANUP] Caller:           ${this.callerInfo.from || 'unknown'} → ${this.callerInfo.to || 'unknown'}`);
+      console.log(`[CLEANUP] CallSid:          ${this.callerInfo.callSid || 'unknown'}`);
+      console.log(`[CLEANUP] Duration:         ${durationSec}s`);
+      console.log(`[CLEANUP] Audio packets:    ${this.audioPacketCount} (${(this.audioBytesToDeepgram / 1024).toFixed(1)} KB to Deepgram)`);
+      console.log(`[CLEANUP] Final transcripts: ${this.finalTranscriptCount}`);
+      console.log(`[CLEANUP] TTS requests:     ${this.ttsRequestCount}`);
+      console.log('[CLEANUP] ────────────────────────────');
+    } else {
+      console.log('[CLEANUP] Cleaning up call connections (no active call)...');
+    }
+    this.stopTypingClicks();
     if (this.deepgramWs) {
       this.deepgramWs.close();
       this.deepgramWs = null;
@@ -580,6 +705,7 @@ export class CallSession {
     this.twilioStreamStarted = false;
     this.streamSid = '';
     this.callAccepted = false;
+    this.callStartedAt = 0;
     if (this.callTimeout) {
       clearTimeout(this.callTimeout);
       this.callTimeout = null;
@@ -678,28 +804,52 @@ function getHTML(): string {
       position: relative;
     }
     .listening-indicator {
-      position: absolute;
-      top: 10px;
-      right: 10px;
+      position: sticky;
+      top: 0;
       display: none;
       align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      background: rgba(96, 165, 250, 0.2);
-      border: 1px solid #60a5fa;
-      border-radius: 20px;
-      font-size: 12px;
-      color: #60a5fa;
+      gap: 12px;
+      padding: 12px 16px;
+      margin: -20px -20px 16px -20px;
+      background: linear-gradient(135deg, rgba(96, 165, 250, 0.25) 0%, rgba(59, 130, 246, 0.18) 100%);
+      border-bottom: 2px solid #60a5fa;
+      font-size: 15px;
+      font-weight: 600;
+      color: #93c5fd;
+      z-index: 5;
+      backdrop-filter: blur(8px);
     }
     .listening-indicator.active {
       display: flex;
     }
     .listening-dot {
-      width: 8px;
-      height: 8px;
+      width: 12px;
+      height: 12px;
       background: #60a5fa;
       border-radius: 50%;
+      box-shadow: 0 0 12px #60a5fa;
       animation: pulse-dot 1.5s infinite;
+    }
+    .listening-wave {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      margin-left: auto;
+    }
+    .listening-wave span {
+      display: block;
+      width: 3px;
+      height: 14px;
+      background: #60a5fa;
+      border-radius: 2px;
+      animation: wave 1s ease-in-out infinite;
+    }
+    .listening-wave span:nth-child(2) { animation-delay: 0.15s; }
+    .listening-wave span:nth-child(3) { animation-delay: 0.3s; }
+    .listening-wave span:nth-child(4) { animation-delay: 0.45s; }
+    @keyframes wave {
+      0%, 100% { transform: scaleY(0.4); }
+      50% { transform: scaleY(1); }
     }
     @keyframes pulse-dot {
       0%, 100% { transform: scale(1); opacity: 1; }
@@ -747,16 +897,27 @@ function getHTML(): string {
     }
     .response-form {
       display: flex;
-      gap: 10px;
+      gap: 12px;
+      align-items: stretch;
     }
     input[type="text"] {
       flex: 1;
-      padding: 15px;
-      font-size: 16px;
-      border: none;
-      border-radius: 8px;
+      padding: 18px 20px;
+      font-size: 17px;
+      border: 2px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
       background: #2a2a2a;
       color: #fff;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input[type="text"]:focus {
+      outline: none;
+      border-color: rgba(102, 126, 234, 0.6);
+      box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.12);
+    }
+    input[type="text"].typing {
+      border-color: rgba(96, 165, 250, 0.7);
+      box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.18);
     }
     button {
       padding: 15px 30px;
@@ -772,6 +933,82 @@ function getHTML(): string {
     button:disabled {
       background: #444;
       cursor: not-allowed;
+    }
+    button.btn-send {
+      padding: 18px 28px;
+      font-size: 17px;
+      font-weight: 700;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(102, 126, 234, 0.35);
+      transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
+      min-width: 170px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    button.btn-send:hover:not(:disabled) {
+      background: linear-gradient(135deg, #5568d3 0%, #6a4296 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 24px rgba(102, 126, 234, 0.5);
+    }
+    button.btn-send:active:not(:disabled) {
+      transform: translateY(0);
+    }
+    button.btn-send:disabled {
+      background: #333;
+      box-shadow: none;
+    }
+    .typing-status {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      padding: 8px 14px;
+      font-size: 13px;
+      color: #93c5fd;
+      background: rgba(96, 165, 250, 0.1);
+      border: 1px solid rgba(96, 165, 250, 0.3);
+      border-radius: 999px;
+      width: fit-content;
+    }
+    .typing-status.active {
+      display: inline-flex;
+    }
+    .typing-status .typing-dots {
+      display: inline-flex;
+      gap: 3px;
+    }
+    .typing-status .typing-dots span {
+      width: 5px;
+      height: 5px;
+      background: #60a5fa;
+      border-radius: 50%;
+      animation: typing-bounce 1.2s infinite;
+    }
+    .typing-status .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+    .typing-status .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes typing-bounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-4px); opacity: 1; }
+    }
+    .send-hint {
+      font-size: 12px;
+      color: #666;
+      margin-top: 8px;
+      text-align: right;
+    }
+    .send-hint kbd {
+      display: inline-block;
+      padding: 2px 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 11px;
+      color: #aaa;
     }
     /* Incoming call overlay */
     .incoming-call {
@@ -1026,7 +1263,8 @@ function getHTML(): string {
     <div class="transcription-box" id="transcription">
       <div class="listening-indicator" id="listeningIndicator">
         <div class="listening-dot"></div>
-        <span>Lytter...</span>
+        <span>🎙️ Modparten taler...</span>
+        <div class="listening-wave"><span></span><span></span><span></span><span></span></div>
       </div>
       <p style="color: #888;">Transskription vises her når opkaldet starter...</p>
     </div>
@@ -1048,9 +1286,17 @@ function getHTML(): string {
         placeholder="Venter på opkald..."
         disabled
         style="opacity: 0.5;"
+        autocomplete="off"
       />
-      <button type="submit" id="sendBtn" disabled style="opacity: 0.5;">Send</button>
+      <button type="submit" class="btn-send" id="sendBtn" disabled style="opacity: 0.5;">
+        <span>📤</span><span>Send &amp; oplæs</span>
+      </button>
     </form>
+    <div class="typing-status" id="typingStatus">
+      <span>🔊 Modparten hører kliklyd</span>
+      <span class="typing-dots"><span></span><span></span><span></span></span>
+    </div>
+    <div class="send-hint">Tryk <kbd>Enter</kbd> for at sende og læse op</div>
   </div>
 
   <aside class="presenter-panel" id="presenterPanel">
@@ -1165,9 +1411,11 @@ function getHTML(): string {
               document.getElementById('responseInput').disabled = true;
               document.getElementById('responseInput').style.opacity = '0.5';
               document.getElementById('responseInput').placeholder = 'Venter på opkald...';
+              document.getElementById('responseInput').value = '';
               document.getElementById('sendBtn').disabled = true;
               document.getElementById('sendBtn').style.opacity = '0.5';
               document.getElementById('quickReplies').classList.remove('active');
+              stopTyping();
               break;
 
             case 'call-timeout':
@@ -1391,6 +1639,7 @@ function getHTML(): string {
 
     function sendReply(text) {
       if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+      stopTyping(); // stop click sound the moment we send the real audio
       ws.send(JSON.stringify({ type: 'user-response', text: text }));
 
       const transcriptionBox = document.getElementById('transcription');
@@ -1400,6 +1649,55 @@ function getHTML(): string {
       transcriptionBox.appendChild(userLine);
       transcriptionBox.scrollTop = transcriptionBox.scrollHeight;
     }
+
+    // Typing detection — when the user is typing, send 'typing-start' so the
+    // worker plays a click sound to the caller. Debounce 'typing-stop' after
+    // 1.5s of inactivity so a brief pause doesn't kill the audible cue.
+    let isTyping = false;
+    let typingStopTimeout = null;
+    const TYPING_IDLE_MS = 1500;
+
+    function startTyping() {
+      if (isTyping) return;
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      isTyping = true;
+      ws.send(JSON.stringify({ type: 'typing-start' }));
+      document.getElementById('responseInput').classList.add('typing');
+      document.getElementById('typingStatus').classList.add('active');
+    }
+
+    function stopTyping() {
+      if (typingStopTimeout) {
+        clearTimeout(typingStopTimeout);
+        typingStopTimeout = null;
+      }
+      if (!isTyping) return;
+      isTyping = false;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'typing-stop' }));
+      }
+      document.getElementById('responseInput').classList.remove('typing');
+      document.getElementById('typingStatus').classList.remove('active');
+    }
+
+    function scheduleTypingStop() {
+      if (typingStopTimeout) clearTimeout(typingStopTimeout);
+      typingStopTimeout = setTimeout(stopTyping, TYPING_IDLE_MS);
+    }
+
+    document.getElementById('responseInput').addEventListener('input', (e) => {
+      if (e.target.value.length === 0) {
+        stopTyping();
+        return;
+      }
+      startTyping();
+      scheduleTypingStop();
+    });
+
+    document.getElementById('responseInput').addEventListener('blur', () => {
+      // If field loses focus, stop typing immediately
+      stopTyping();
+    });
 
     document.getElementById('responseForm').addEventListener('submit', (e) => {
       e.preventDefault();
