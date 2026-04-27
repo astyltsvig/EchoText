@@ -44,7 +44,7 @@ function generateClickAudioBase64(): string {
     const attack = Math.min(1, t / 0.003);
     const envelope = attack * Math.exp(-t * 110);
     const tone = Math.sin(2 * Math.PI * 650 * t) * 0.85 + (Math.random() - 0.5) * 0.15;
-    const sample = Math.round(envelope * tone * 8500); // ~26% of full scale
+    const sample = Math.round(envelope * tone * 12500); // ~38% of full scale
     bytes[i] = linearToMulaw(sample);
   }
   let binary = '';
@@ -808,43 +808,32 @@ function getHTML(): string {
       overflow-y: auto;
       position: relative;
     }
-    .listening-indicator {
-      position: sticky;
-      top: 0;
+    .speaking-indicator {
       display: none;
       align-items: center;
-      gap: 12px;
-      padding: 12px 16px;
-      margin: -20px -20px 16px -20px;
-      background: linear-gradient(135deg, rgba(96, 165, 250, 0.25) 0%, rgba(59, 130, 246, 0.18) 100%);
-      border-bottom: 2px solid #60a5fa;
-      font-size: 15px;
+      gap: 8px;
+      margin-left: auto;
+      padding: 6px 12px;
+      background: rgba(96, 165, 250, 0.18);
+      border: 1px solid rgba(96, 165, 250, 0.4);
+      border-radius: 999px;
+      font-size: 13px;
       font-weight: 600;
       color: #93c5fd;
-      z-index: 5;
-      backdrop-filter: blur(8px);
+      white-space: nowrap;
     }
-    .listening-indicator.active {
-      display: flex;
-    }
-    .listening-dot {
-      width: 12px;
-      height: 12px;
-      background: #60a5fa;
-      border-radius: 50%;
-      box-shadow: 0 0 12px #60a5fa;
-      animation: pulse-dot 1.5s infinite;
+    .speaking-indicator.active {
+      display: inline-flex;
     }
     .listening-wave {
       display: inline-flex;
       align-items: center;
       gap: 3px;
-      margin-left: auto;
     }
     .listening-wave span {
       display: block;
       width: 3px;
-      height: 14px;
+      height: 12px;
       background: #60a5fa;
       border-radius: 2px;
       animation: wave 1s ease-in-out infinite;
@@ -1129,9 +1118,6 @@ function getHTML(): string {
 
     /* Quick-reply chips */
     .quick-replies {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
       margin-bottom: 16px;
       opacity: 0.4;
       pointer-events: none;
@@ -1142,13 +1128,27 @@ function getHTML(): string {
       pointer-events: auto;
     }
     .quick-replies-label {
-      width: 100%;
       font-size: 12px;
       color: #888;
-      margin-bottom: 4px;
+      margin-bottom: 12px;
       text-transform: uppercase;
       letter-spacing: 0.08em;
       font-weight: 600;
+    }
+    .quick-replies-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .qr-cat {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #93c5fd;
+      font-weight: 700;
+      min-width: 70px;
     }
     .quick-reply-chip {
       padding: 10px 18px;
@@ -1253,6 +1253,11 @@ function getHTML(): string {
     <div class="status" id="status">
       <div class="status-indicator"></div>
       <span id="statusText">Venter på opkald...</span>
+      <div class="speaking-indicator" id="listeningIndicator">
+        <span>🎙️</span>
+        <span>Modparten taler</span>
+        <div class="listening-wave"><span></span><span></span><span></span><span></span></div>
+      </div>
     </div>
 
     <div class="incoming-call" id="incomingCall">
@@ -1266,22 +1271,30 @@ function getHTML(): string {
     </div>
 
     <div class="transcription-box" id="transcription">
-      <div class="listening-indicator" id="listeningIndicator">
-        <div class="listening-dot"></div>
-        <span>🎙️ Modparten taler...</span>
-        <div class="listening-wave"><span></span><span></span><span></span><span></span></div>
-      </div>
       <p style="color: #888;">Transskription vises her når opkaldet starter...</p>
     </div>
 
     <div class="quick-replies" id="quickReplies">
       <div class="quick-replies-label">Hurtigsvar — klik for at læse op for opkalder</div>
-      <button type="button" class="quick-reply-chip" data-reply="Ja tak.">Ja tak</button>
-      <button type="button" class="quick-reply-chip" data-reply="Nej tak.">Nej tak</button>
-      <button type="button" class="quick-reply-chip" data-reply="Kan du gentage det?">Kan du gentage?</button>
-      <button type="button" class="quick-reply-chip" data-reply="Lige et øjeblik, jeg skriver et svar.">Et øjeblik</button>
-      <button type="button" class="quick-reply-chip" data-reply="Kan du ringe tilbage om lidt?">Ring tilbage senere</button>
-      <button type="button" class="quick-reply-chip" data-reply="Vil du sende det på SMS eller mail i stedet?">Send SMS/mail i stedet</button>
+      <div class="quick-replies-row">
+        <span class="qr-cat">Bekræft</span>
+        <button type="button" class="quick-reply-chip" data-reply="Ja tak.">Ja tak</button>
+        <button type="button" class="quick-reply-chip" data-reply="Nej tak.">Nej tak</button>
+        <button type="button" class="quick-reply-chip" data-reply="Forstået.">Forstået</button>
+        <button type="button" class="quick-reply-chip" data-reply="Det lyder godt.">Det lyder godt</button>
+      </div>
+      <div class="quick-replies-row">
+        <span class="qr-cat">Bed om</span>
+        <button type="button" class="quick-reply-chip" data-reply="Kan du gentage det?">Kan du gentage?</button>
+        <button type="button" class="quick-reply-chip" data-reply="Kan du tale lidt langsommere?">Lidt langsommere</button>
+        <button type="button" class="quick-reply-chip" data-reply="Lige et øjeblik, jeg skriver et svar.">Et øjeblik</button>
+      </div>
+      <div class="quick-replies-row">
+        <span class="qr-cat">Afslut</span>
+        <button type="button" class="quick-reply-chip" data-reply="Tak for opkaldet, hej.">Tak for opkaldet</button>
+        <button type="button" class="quick-reply-chip" data-reply="Kan du ringe tilbage om lidt?">Ring tilbage senere</button>
+        <button type="button" class="quick-reply-chip" data-reply="Vil du sende det på SMS eller mail i stedet?">Send SMS/mail i stedet</button>
+      </div>
     </div>
 
     <form class="response-form" id="responseForm">
