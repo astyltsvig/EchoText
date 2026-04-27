@@ -1278,8 +1278,8 @@ function getHTML(): string {
       <div class="quick-replies-label">Hurtigsvar — klik for at læse op for opkalder</div>
       <div class="quick-replies-row">
         <span class="qr-cat">Bekræft</span>
-        <button type="button" class="quick-reply-chip" data-reply="Ja tak.">Ja tak</button>
-        <button type="button" class="quick-reply-chip" data-reply="Nej tak.">Nej tak</button>
+        <button type="button" class="quick-reply-chip" data-reply="Ja.">Ja</button>
+        <button type="button" class="quick-reply-chip" data-reply="Nej.">Nej</button>
         <button type="button" class="quick-reply-chip" data-reply="Forstået.">Forstået</button>
         <button type="button" class="quick-reply-chip" data-reply="Det lyder godt.">Det lyder godt</button>
       </div>
