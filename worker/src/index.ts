@@ -31,17 +31,20 @@ function linearToMulaw(sample: number): number {
   return ~(sign | (exponent << 4) | mantissa) & 0xFF;
 }
 
-// Generates a short typewriter-style click as base64 mulaw (8kHz, ~40ms)
-// so the caller can hear that the user is actively typing.
+// Generates a short, soft "tap" as base64 mulaw (8kHz, ~30ms) so the caller
+// gets a gentle audible cue that the user is typing. Warmer tone (650Hz),
+// reduced amplitude and almost no noise to keep it unobtrusive on phone audio.
 function generateClickAudioBase64(): string {
   const sampleRate = 8000;
-  const numSamples = 320; // 40ms
+  const numSamples = 240; // 30ms
   const bytes = new Uint8Array(numSamples);
   for (let i = 0; i < numSamples; i++) {
     const t = i / sampleRate;
-    const envelope = Math.exp(-t * 90);
-    const tone = Math.sin(2 * Math.PI * 1400 * t) * 0.55 + (Math.random() - 0.5) * 0.45;
-    const sample = Math.round(envelope * tone * 14000);
+    // 3ms attack ramp avoids a hard "pop", then exponential decay
+    const attack = Math.min(1, t / 0.003);
+    const envelope = attack * Math.exp(-t * 110);
+    const tone = Math.sin(2 * Math.PI * 650 * t) * 0.85 + (Math.random() - 0.5) * 0.15;
+    const sample = Math.round(envelope * tone * 8500); // ~26% of full scale
     bytes[i] = linearToMulaw(sample);
   }
   let binary = '';
@@ -634,15 +637,17 @@ export class CallSession {
   }
 
   /**
-   * Starts sending a periodic click sound to the caller while the user is typing.
-   * Gives the caller an audible cue that a written reply is on its way.
+   * Plays a single soft click immediately, then a gentle reminder click every
+   * 10 seconds while the user is still typing. One-and-done on short replies,
+   * but for longer messages the caller gets periodic confirmation that the
+   * user is still composing.
    */
   startTypingClicks(): void {
     if (this.typingClickInterval) return;
     if (!this.callAccepted || !this.twilioWs || !this.streamSid) return;
-    console.log('[TYPING] Starting click sound');
+    console.log('[TYPING] Starting click sound (initial + every 10s)');
     this.sendClick();
-    this.typingClickInterval = setInterval(() => this.sendClick(), 600);
+    this.typingClickInterval = setInterval(() => this.sendClick(), 10000);
   }
 
   stopTypingClicks(): void {
